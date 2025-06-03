@@ -1,0 +1,13 @@
+export enum SOAP_COMMANDS {
+	// Server Commands
+	GET_SERVER_INFO,
+	GET_SERVER_STATUS,
+	GET_ONLINE_CHARACTERS,
+
+	// Player Commands
+	GET_CHARACTER_INFO,
+	GET_CHARACTER_LOCATION,
+
+	// Guild Commands
+	GET_GUILD_INFO,
+}

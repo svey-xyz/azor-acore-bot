@@ -1,0 +1,19 @@
+{
+	"discord.enabled": true,
+	"sqltools.connections": [
+		{
+			"mysqlOptions": {
+				"authProtocol": "default"
+			},
+			"previewLimit": 50,
+			"server": "192.168.0.3",
+			"port": 3306,
+			"driver": "MariaDB",
+			"name": "xyz",
+			"group": "JarvisMaria",
+			"database": "xyz_discord_bot",
+			"username": "xyz",
+			"password": "RkqLZDjQjw3j3XY8aP"
+		}
+	]
+}
