@@ -21,6 +21,26 @@ export const SOAP_PASSWORD = assertValue(
 	'Missing environment variable: SOAP_PASSWORD'
 )
 
+export const MYSQL_ENDPOINT = assertValue(
+	process.env.MYSQL_ENDPOINT,
+	'Missing environment variable: MYSQL_ENDPOINT'
+)
+
+export const MYSQL_PORT = assertValue(
+	process.env.MYSQL_PORT || 3306, // Default MySQL port
+	'Missing environment variable: MYSQL_PORT'
+)
+
+export const MYSQL_USER = assertValue(
+	process.env.MYSQL_USER,
+	'Missing environment variable: MYSQL_USER'
+)
+
+export const MYSQL_PASSWORD = assertValue(
+	process.env.MYSQL_PASSWORD,
+	'Missing environment variable: MYSQL_PASSWORD'
+)
+
 export const DISCORD_TOKEN = assertValue(
 	process.env.DISCORD_TOKEN,
 	'Missing environment variable: DISCORD_TOKEN'

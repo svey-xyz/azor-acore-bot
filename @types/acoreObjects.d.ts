@@ -2,6 +2,19 @@
 // Type Definitions
 // ========================
 
+interface Character {
+	name: string;
+	accountId: number;
+	online: boolean;
+	mapId: number;
+	zoneId: number;
+	class: string;
+	race: string;
+	gender: string;
+	level: number;
+	guild?: GuildInfo;
+}
+
 interface GuildInfo {
 	name: string;
 	id: number;

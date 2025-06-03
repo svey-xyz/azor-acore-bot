@@ -1,5 +1,5 @@
 import { soapParser } from './soapParser';
-import { SOAP_USER, SOAP_PASSWORD, SOAP_ENDPOINT, SOAP_PORT } from './env';
+import { SOAP_USER, SOAP_PASSWORD, SOAP_ENDPOINT, SOAP_PORT } from '../../lib/env';
 import http from 'http'
 import { SOAP_COMMANDS } from './soapCommands';
 
