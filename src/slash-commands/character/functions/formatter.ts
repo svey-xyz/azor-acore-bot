@@ -1,13 +1,14 @@
-import { AcoreMapHelper } from "../../../lib/acoreMaps";
+import { Character } from "src/lib/ORM/Character";
+import { AcoreTypeMaps } from "../../../lib/ORM/AcoreTypeMaps";
 
-export const formatCharacterOutput = (data: CharacterInfo): string => {
+export const formatCharacterOutput = (character: Character): string => {
 	return `
 **Character Information**
-Name: ${data.name}
-Level: ${data.level}
-Race: ${AcoreMapHelper.raceName(data.race)}
-Class: ${AcoreMapHelper.className(data.class)}
-Gender: ${AcoreMapHelper.genderName(data.gender)}
+Name: ${character.name}
+Level: ${character.level}
+Race: ${character.race}
+Class: ${character.class}
+Gender: ${character.gender}
 `.trim();
 }
 

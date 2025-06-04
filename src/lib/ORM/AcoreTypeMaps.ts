@@ -2402,7 +2402,7 @@ const getZoneName = (zoneId: number): ZONE_TYPE => {
 	}
 }
 
-export const AcoreMapHelper = {
+export const AcoreTypeMaps = {
 	className: getClassName,
 	raceName: getRaceName,
 	genderName: getGenderName,
