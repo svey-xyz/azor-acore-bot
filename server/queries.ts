@@ -34,5 +34,4 @@ export const queries = {
 		const sanitizedUsername = capitalize(args.username.replace(/'/g, "''").toLowerCase()); 
 		return `SELECT * FROM characters WHERE name = '${sanitizedUsername}' LIMIT 1;`;
 	},
-
 }
