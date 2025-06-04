@@ -2,7 +2,7 @@ import { REST } from '@discordjs/rest'
 import { Routes } from 'discord-api-types/v9';
 import { Collection } from 'discord.js';
 import { Command } from './command';
-import { DISCORD_CLIENT_ID, DISCORD_TOKEN } from './lib/env';
+import { DISCORD_CLIENT_ID, DISCORD_TOKEN } from '../lib/env';
 import { character } from './slash-commands/character/character';
 
 
@@ -14,7 +14,7 @@ export function deployCommands(client: any): Array<JSON> {
 		character,
 	// Add other commands here as needed
 	]
-	
+
 	let commandJSON = Array<JSON>();
 
 	COMMANDS.forEach(command => {

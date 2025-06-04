@@ -1,5 +1,4 @@
-import { soapParser } from './soapParser';
-import { SOAP_USER, SOAP_PASSWORD, SOAP_ENDPOINT, SOAP_PORT } from './env';
+import { SOAP_USER, SOAP_PASSWORD, SOAP_ENDPOINT, SOAP_PORT } from '../../lib/env';
 import http from 'http'
 import { SOAP_COMMANDS } from './soapCommands';
 
@@ -14,7 +13,7 @@ const SOAP_COMMANDS_MAP: Record<SOAP_COMMANDS, string> = {
 
 type CommandArgs = Record<string, string | number>;
 
-export const executeSoapCommand = async <T>({ command, args = {} }: { command: SOAP_COMMANDS, args: CommandArgs}): Promise<T | undefined> => {
+export const executeSoapCommand = async <T>({ command, args = {} }: { command: SOAP_COMMANDS, args: CommandArgs}): Promise<T | string | undefined> => {
 
 	let commandString = SOAP_COMMANDS_MAP[command];
 
@@ -59,8 +58,8 @@ export const executeSoapCommand = async <T>({ command, args = {} }: { command: S
 
 	try {
 		const plainTextResult = extractSoapResponse(data.result);
-		const parsedData = soapParser<T>(command, plainTextResult);
-		return parsedData;
+
+		return plainTextResult;
 
 	} catch (error: any) {
 		console.error('SOAP Error:', error.message);

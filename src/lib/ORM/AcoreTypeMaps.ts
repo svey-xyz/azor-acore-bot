@@ -2,7 +2,8 @@
 // Mappings for Human-Readable Values
 // ========================
 
-const ZONE_MAP: Record<number, string> = {
+const ZONE_MAP = {
+	0: "Unknown Zone",
 	1: "Dun Morogh ",
 	2: "Longshore ",
 	3: "Badlands ",
@@ -2310,9 +2311,10 @@ const ZONE_MAP: Record<number, string> = {
 	4908: "The Hidden Passage ",
 	4910: "Frostmourne ",
 	4987: "The Ruby Sanctum "
-}
+} as const;
 
-const CLASS_MAP: Record<number, string> = {
+const CLASS_MAP = {
+	0: "Unknown Class",
 	1: "Warrior",
 	2: "Paladin",
 	3: "Hunter",
@@ -2323,9 +2325,10 @@ const CLASS_MAP: Record<number, string> = {
 	8: "Mage",
 	9: "Warlock",
 	11: "Druid"
-};
+} as const;
 
-const RACE_MAP: Record<number, string> = {
+const RACE_MAP = {
+	0: "Unknown Race",
 	1: "Human",
 	2: "Orc",
 	3: "Dwarf",
@@ -2336,34 +2339,70 @@ const RACE_MAP: Record<number, string> = {
 	8: "Troll",
 	10: "Blood Elf",
 	11: "Draenei"
-};
+} as const;
 
-const GENDER_MAP: Record<number, string> = {
+const GENDER_MAP = {
 	0: "Male",
-	1: "Female"
-};
+	1: "Female",
+	2: "Unknown Gender"
+} as const;
 
 // ========================
 // Helper Functions
 // ========================
-
-const getClassName = (classId: number): string => {
-	return CLASS_MAP[classId] || `Unknown Class - ${classId}`;
+export type CLASS_TYPE = (typeof CLASS_MAP)[keyof typeof CLASS_MAP];
+const getClassName = (classId: number): CLASS_TYPE => {
+	try {
+		const key = classId as keyof typeof CLASS_MAP;
+		if (!(key in CLASS_MAP)) throw new Error(`Invalid classId: ${classId}`);
+		return CLASS_MAP[key];
+	} catch (error) {
+		console.error(`Error in getClassName: ${error}`);
+		return CLASS_MAP[0]; // return unknown
+	}
 }
 
-const getRaceName = (raceId: number): string => {
-	return RACE_MAP[raceId] || `Unknown Race - ${raceId}`;
+
+export type RACE_TYPE = (typeof RACE_MAP)[keyof typeof RACE_MAP];
+const getRaceName = (raceId: number): RACE_TYPE => {
+	try {
+		const key = raceId as keyof typeof RACE_MAP;
+		if (!(key in RACE_MAP)) throw new Error(`Invalid raceId: ${raceId}`);
+		return RACE_MAP[key];
+
+	} catch (error) {
+		console.error(`Error in getRaceName: ${error}`);
+		return RACE_MAP[0]; // return unknown
+	}
 }
 
-const getGenderName = (genderId: number): string => {
-	return GENDER_MAP[genderId] || `Unknown Gender - ${genderId}`;
+export type GENDER_TYPE = (typeof GENDER_MAP)[keyof typeof GENDER_MAP];
+const getGenderName = (genderId: number): GENDER_TYPE => {
+	try {
+		const key = genderId as keyof typeof GENDER_MAP;
+		if (!(key in GENDER_MAP)) throw new Error(`Invalid genderId: ${genderId}`);
+		return GENDER_MAP[key];
+
+	} catch (error) {
+		console.error(`Error in getGenderName: ${error}`);
+		return GENDER_MAP[2]; // return unknown
+	}
 }
 
-const getZoneName = (zoneId: number): string => {
-	return ZONE_MAP[zoneId] || `Unknown Zone - ${zoneId}`;
+export type ZONE_TYPE = (typeof ZONE_MAP)[keyof typeof ZONE_MAP];
+const getZoneName = (zoneId: number): ZONE_TYPE => {
+	try {
+		const key = zoneId as keyof typeof ZONE_MAP;
+		if (!(key in ZONE_MAP)) throw new Error(`Invalid zoneId: ${zoneId}`);
+		return ZONE_MAP[key];
+
+	} catch (error) {
+		console.error(`Error in getZoneName: ${error}`);
+		return ZONE_MAP[0]; // return unknown
+	}
 }
 
-export const AcoreMapHelper = {
+export const AcoreTypeMaps = {
 	className: getClassName,
 	raceName: getRaceName,
 	genderName: getGenderName,
