@@ -1,7 +1,14 @@
 {
-  "name": "xyzbot",
-  "version": "0.0.1",
-  "description": "Testing discord bot stuff",
+  "name": "azor-acore-bot",
+  "version": "0.1.1",
+  "description": "Integrated Discord bot for Azerothcore.",
+	"keywords": [
+		"discord",
+		"bot",
+		"world-of-warcraft",
+		"azerothcore",
+		"acore"
+	],
   "main": "dist/bot.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
@@ -10,14 +17,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/soulelyhayden/discordbot.git"
+    "url": "git+https://github.com/svey-xyz/azor-acore-bot.git"
   },
   "author": "svey",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/soulelyhayden/discordbot/issues"
+    "url": "https://github.com/svey-xyz/azor-acore-bot/issues"
   },
-  "homepage": "https://github.com/soulelyhayden/discordbot#readme",
+  "homepage": "https://github.com/svey-xyz/azor-acore-bot#readme",
   "dependencies": {
     "@discordjs/rest": "^0.5.0",
     "@types/mysql": "^2.15.27",
@@ -26,7 +33,6 @@
     "dotenv": "^16.0.1",
     "dotenv-expand": "^8.0.3",
     "mysql2": "^3.14.1",
-    "prisma": "^6.9.0",
     "soap": "^1.1.12"
   },
   "devDependencies": {
