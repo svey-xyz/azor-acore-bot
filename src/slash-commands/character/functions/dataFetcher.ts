@@ -2,6 +2,11 @@ import { formatCharacterOutput } from "../functions/formatter";
 import { executeSoapCommand } from "../../../lib/executeSoapCommand"
 import { SOAP_COMMANDS } from "../../../lib/soapCommands";
 import { AcoreMapHelper } from "../../../lib/acoreMaps";
+import { DATABASE } from "../../../../server/DATABASE";
+import { QUERIES } from "server/queries";
+
+const db = new DATABASE();
+
 
 export const characterStatus = async (username: string) => {
 	const info = await executeSoapCommand<OnlineCharacter[]>({ command: SOAP_COMMANDS.GET_ONLINE_CHARACTERS, args: { player_name: username } });
@@ -30,9 +35,11 @@ export const CharacterInfo = async (username: string) => {
 }
 
 export const CharacterLocation = async (username: string) => {
-	const CharacterData = await executeSoapCommand<OnlineCharacter[]>({ command: SOAP_COMMANDS.GET_ONLINE_CHARACTERS, args: {} });
-	const character = CharacterData?.find(character => character.character.toLowerCase() === username.toLowerCase());
-	const zoneID = character?.zoneId;
+	const character = await db.query(QUERIES.GET_CHARACTER_BY_NAME, { username });
+	if (character == null) {
+		throw new Error(`Error fetching character data.`);
+	}
+	const zoneID = character.zone;
 
 	if (!character || !zoneID) {
 		return `Character **${username}** is not online or does not have a valid zone ID.`;

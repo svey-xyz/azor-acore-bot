@@ -1,12 +1,18 @@
 import { capitalize } from "../lib/stringFunctions";
 
+export const enum DATABASES {
+	CHARACTERS = "acore_characters",
+	AUTH = "acore_auth",
+	WORLD = "acore_world",
+}
+
 export const enum QUERIES {
 	GET_CHARACTER_BY_NAME,
 }
 
 export const databaseMap = {
-	[QUERIES.GET_CHARACTER_BY_NAME]: "acore_characters",
-} as const;
+	[QUERIES.GET_CHARACTER_BY_NAME]: DATABASES.CHARACTERS,
+} as const
 
 export type queryArgs = {
 	[QUERIES.GET_CHARACTER_BY_NAME]: {

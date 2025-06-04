@@ -1,27 +1,27 @@
 import mysql from 'mysql2';
-import { databaseMap, queries, QUERIES, queryArgs, expectedQueryReturnType } from './queries';
+import { databaseMap, queries, QUERIES, queryArgs, expectedQueryReturnType, DATABASES } from './queries';
 import { MYSQL_ENDPOINT, MYSQL_USER, MYSQL_PASSWORD } from '../lib/env';
 
 export class DATABASE {
-	private connections: Map<string, mysql.Connection> = new Map();
+	private connections: Map<DATABASES, mysql.Connection> = new Map();
 
 	constructor() { }
 
-	public getConnection(database: string): mysql.Connection {
+	public getConnection(database: DATABASES): mysql.Connection {
 		if (this.connections.has(database)) return this.connections.get(database) as mysql.Connection;
 
 		const _C = mysql.createConnection({
 			host: MYSQL_ENDPOINT,
 			user: MYSQL_USER,
 			password: MYSQL_PASSWORD,
-			database: database
+			database: database as string
 		});
 		this.connections.set(database, _C);
 
 		return _C;
 	}
 
-	public closeConnection(database: string): void {
+	public closeConnection(database: DATABASES): void {
 		if (this.connections.has(database)) {
 			const _C = this.connections.get(database);
 			_C?.end(err => {
@@ -37,10 +37,10 @@ export class DATABASE {
 		}
 	}
 
-	public query(_Q: QUERIES, values: {} = {}): Promise<expectedQueryReturnType[typeof _Q]> {
+	public query(_Q: QUERIES, values: queryArgs[typeof _Q]): Promise<expectedQueryReturnType[typeof _Q]> {
 		const database = databaseMap[_Q];
-		const query = queries[_Q]({ args: values as queryArgs[typeof _Q] });
-		
+		const query = queries[_Q]({ args: values});
+
 		if (!this.connections.has(database)) {
 			console.warn(`No connection found for database: ${database}, executing query on a new connection.`);
 			this.getConnection(database);

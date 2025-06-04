@@ -17,15 +17,15 @@ interactionCreate(client);
 
 client.login(token)
 
-const test = async () => {
-	const db = new DATABASE();
-	// db.getConnection('acore_auth')
-	const query = await db.query(QUERIES.GET_CHARACTER_BY_NAME, { username: 'Svey' });
-	console.log(query);
-}
+// const test = async () => {
+// 	const db = new DATABASE();
+// 	// db.getConnection('acore_auth')
+// 	const query = await db.query(QUERIES.GET_CHARACTER_BY_NAME, { username: 'Svey' });
+// 	console.log(query);
+// }
 
 
-test();
+// test();
 // https://discord.com/api/oauth2/authorize?client_id=1379255087171375154&permissions=581085722147905&scope=bot%20applications.commands
 
 // perms = 581085722147905
