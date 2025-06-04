@@ -1,20 +1,19 @@
-import { status } from "src/slash-commands/character/subCommands/status";
 import { Character } from "./ORM/Character";
 
 export const formatBankMoney = (bankString: string): string => {
 	return bankString === '0 gold' ? 'No gold' : bankString;
 }
 
-export const formatGuildOutput = (data: any): string => {
+const GuildInfo = (guild: any): string => {
 	return `
 **Guild Information**
-Name: ${data.name}
-Guild Master: ${data.master}
-Created: ${data.creationDate}
-Members: ${data.memberCount}
-Bank: ${formatBankMoney(data.bankMoney)}
-MOTD: ${data.motd || "No message set"}
-Info: ${data.info}
+Name: ${guild.name}
+Guild Master: ${guild.master}
+Created: ${guild.creationDate}
+Members: ${guild.memberCount}
+Bank: ${formatBankMoney(guild.bankMoney)}
+MOTD: ${guild.motd || "No message set"}
+Info: ${guild.info}
 `.trim();
 }
 
@@ -30,6 +29,8 @@ Gender: ${character.gender}
 }
 
 const CharacterLocation = (character: Character): string => {
+	if (character.online === false) return `**Character Location**\n${character.name} is currently offline.`;
+	if (!character.zone) return `**Character Location**\n${character.name} data not available.`;
 	return `
 **Character Location**
 Map ID: ${character.mapId}

@@ -1,6 +1,19 @@
 import { SOAP_USER, SOAP_PASSWORD, SOAP_ENDPOINT, SOAP_PORT } from '../../lib/env';
 import http from 'http'
-import { SOAP_COMMANDS } from './soapCommands';
+
+enum SOAP_COMMANDS {
+	// Server Commands
+	GET_SERVER_INFO,
+	GET_SERVER_STATUS,
+	GET_ONLINE_CHARACTERS,
+
+	// Player Commands
+	GET_CHARACTER_INFO,
+	GET_CHARACTER_LOCATION,
+
+	// Guild Commands
+	GET_GUILD_INFO,
+}
 
 const SOAP_COMMANDS_MAP: Record<SOAP_COMMANDS, string> = {
 	[SOAP_COMMANDS.GET_SERVER_INFO]: '',

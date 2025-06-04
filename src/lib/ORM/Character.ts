@@ -41,8 +41,8 @@ export class Character {
 	private _name: string;
 	private _accountId: number;
 	private _online: boolean;
-	private _mapId: number;
-	private _zone: ZONE_TYPE;
+	private _mapId?: number;
+	private _zone?: ZONE_TYPE;
 	private _class: CLASS_TYPE;
 	private _race: RACE_TYPE;
 	private _gender: GENDER_TYPE;
@@ -57,8 +57,9 @@ export class Character {
 		this._name = db_character.name;
 		this._accountId = db_character.accountId; // TODO: Fetch account info
 		this._online = db_character.online == 1;
-		this._mapId = db_character.mapId;
-		this._zone = AcoreTypeMaps.zoneName(db_character.zoneId);
+		this._mapId = db_character.mapId || undefined; // Use mapId if it exists, otherwise undefined
+		// If zoneId exists, map it to a zone name, otherwise set to undefined
+		this._zone = db_character.zoneId ? AcoreTypeMaps.zoneName(db_character.zoneId) : undefined;
 		this._class = AcoreTypeMaps.className(db_character.class);
 		this._race = AcoreTypeMaps.raceName(db_character.race);
 		this._gender = AcoreTypeMaps.genderName(db_character.gender);
@@ -76,8 +77,8 @@ export class Character {
 	public get name(): string { return this._name; }
 	public get accountId(): number { return this._accountId; }
 	public get online(): boolean { return this._online; }
-	public get mapId(): number { return this._mapId;}
-	public get zone(): ZONE_TYPE { return this._zone; }
+	public get mapId(): number | undefined { return this._mapId;}
+	public get zone(): ZONE_TYPE | undefined { return this._zone; }
 	public get class(): CLASS_TYPE { return this._class; }
 	public get race(): RACE_TYPE { return this._race; }
 	public get gender(): GENDER_TYPE { return this._gender; }
