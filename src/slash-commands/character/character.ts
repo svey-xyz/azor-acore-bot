@@ -6,7 +6,6 @@ import { status } from "./subCommands/status";
 import { info } from "./subCommands/info";
 import { location } from "./subCommands/location";
 
-
 export const character: Command = {
 	cmdData: commandData,
 	async execute(commandInteraction: CommandInteraction) {
@@ -27,33 +26,4 @@ export const character: Command = {
 				break;
 		}
 	},
-	// async select(selectInteraction: SelectMenuInteraction) {
-	// 	const { customId, values, member } = selectInteraction
-	// 	const selectCustomID = JSON.parse(customId)
-		
-	// 	switch (selectCustomID.fn) {
-	// 		case ('c'):
-	// 			group.selectHandler!(selectInteraction)
-	// 			break;
-	// 		case ('m'):
-	// 			menu.selectHandler!(selectInteraction)
-	// 			break;
-	// 		default:
-	// 			break;
-	// 	}
-	// },
-	// async button(buttonInteraction: ButtonInteraction) {
-	// 	const { customId, member } = buttonInteraction
-	// 	const selectCustomID = JSON.parse(customId)
-
-	// 	switch (selectCustomID.fn) {
-	// 		case ('c'):
-	// 			group.buttonHandler!(buttonInteraction)
-	// 			break;
-	// 		default:
-	// 			break;
-	// 	}
-	// }
 };
-
-// module.exports = character;
