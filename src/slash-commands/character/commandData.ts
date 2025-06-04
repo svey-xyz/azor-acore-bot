@@ -36,4 +36,3 @@ export const commandData = new SlashCommandBuilder()
 						.setRequired(true)
 			)
 	)
-	
