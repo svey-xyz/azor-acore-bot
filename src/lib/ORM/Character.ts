@@ -35,7 +35,8 @@ const updateCachedCharacter = async (username: string): Promise<Character> => {
 	return character;
 }
 
-type formatOptions = 'info'
+// export type CharacterORM_Type = typeof Character;
+
 export class Character {
 	private _name: string;
 	private _accountId: number;
@@ -46,7 +47,7 @@ export class Character {
 	private _race: RACE_TYPE;
 	private _gender: GENDER_TYPE;
 	private _level: number;
-	private _guild?: GuildInfo | undefined;
+	private _guild?: any | undefined; //TODO: Define GuildInfo type and use it here
 	private _databaseCharacter: _character;
 
 	private constructor({ db_character }: { db_character:_character}) {
@@ -81,28 +82,7 @@ export class Character {
 	public get race(): RACE_TYPE { return this._race; }
 	public get gender(): GENDER_TYPE { return this._gender; }
 	public get level(): number { return this._level; }
-	public get guild(): GuildInfo | undefined { return this._guild;}
+	public get guild(): any | undefined { return this._guild;}
 
 	public get databaseCharacter(): _character { return this._databaseCharacter; }
-
-	private FormatCharacterInfo = (character: Character): string => {
-		return `
-**Character Information**
-Name: ${character.name}
-Level: ${character.level}
-Race: ${character.race}
-Class: ${character.class}
-Gender: ${character.gender}
-`.trim();
-	}
-
-	
-	public formatOutput = (option: formatOptions) => {
-		switch (option) {
-			case 'info':
-				return this.FormatCharacterInfo(this);
-			default:
-				throw new Error(`Unknown format option: ${option}`);
-		}
-	}
 }

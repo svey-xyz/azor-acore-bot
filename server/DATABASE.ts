@@ -7,7 +7,7 @@ export class DATABASE {
 
 	constructor() { }
 
-	public getConnection(database: DATABASES): mysql.Connection {
+	private getConnection(database: DATABASES): mysql.Connection {
 		if (this.connections.has(database)) return this.connections.get(database) as mysql.Connection;
 
 		const _C = mysql.createConnection({
@@ -21,7 +21,7 @@ export class DATABASE {
 		return _C;
 	}
 
-	public closeConnection(database: DATABASES): void {
+	private closeConnection(database: DATABASES): void {
 		if (this.connections.has(database)) {
 			const _C = this.connections.get(database);
 			_C?.end(err => {
