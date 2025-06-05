@@ -11,15 +11,30 @@ type _c = {
 
 const characters = new Map<string, _c>();
 
-export const getCharacterByName = async (username: string, forceNoCache: boolean = false): Promise<Character> => {
-	if (!characters.has(username)) return await updateCachedCharacter(username);
-	const char= await addCachedCharacter(characters.get(username)!.char, forceNoCache);
-	return char
+export const getCharacterByName = async (username: string, forceNoCache: boolean = false) => {
+
+	try {
+		if (!characters.has(username)) return await updateCachedCharacter(username);
+		const char = await addCachedCharacter(characters.get(username)!.char, forceNoCache);
+		return char
+	} catch (error) {
+		console.error(`Error fetching character by name: ${username}`, error);
+		return Promise.reject(new Error(`Error fetching character by name: ${username}`));
+	}
+
 }
 
-export const getCharacterByDbCharacter = async (db_character: _character, forceNoCache: boolean = false): Promise<Character> => {
-	if (!characters.has(db_character.name)) return updateCachedCharacterFromDb(db_character);
-	return await addCachedCharacter(characters.get(db_character.name)!.char, forceNoCache);
+export const getCharacterByDbCharacter = async (db_character: _character, forceNoCache: boolean = false) => {
+
+	try {
+		if (!characters.has(db_character.name)) return updateCachedCharacterFromDb(db_character);
+		const char = await addCachedCharacter(characters.get(db_character.name)!.char, forceNoCache);
+		return char
+	} catch (error) {
+		console.error(`Error fetching character by database.`, error);
+		return Promise.reject(new Error(`Error fetching character database.`));
+	}
+	
 }
 
 const addCachedCharacter = async (character: Character, forceNoCache: boolean = false): Promise<Character> => {
@@ -64,6 +79,7 @@ export class Character {
 	private _race: RACE_TYPE;
 	private _gender: GENDER_TYPE;
 	private _level: number;
+	private _lastTip?: number; // Timestamp of the last time the character was updated
 	private _guild?: any | undefined; //TODO: Define GuildInfo type and use it here
 	private _databaseCharacter: _character;
 
@@ -90,10 +106,12 @@ export class Character {
 
 	public static createCharacter = async (username: string) => {
 		const databaseCharacters = await db.query[QUERIES.GET_CHARACTER_BY_NAME]({ username });
-		if (!databaseCharacters) throw new Error(`Error fetching character with name: ${username}.`);
+		if (!databaseCharacters || !databaseCharacters[0]) throw new Error(`Error fetching character with name: ${username}.`);
 
 		return new Character({ db_character: databaseCharacters[0] });
 	}
+
+	public set lastTip(time: number | undefined) { this._lastTip = time;}
 
 	public get name(): string { return this._name; }
 	public get accountId(): number { return this._accountId; }
@@ -104,6 +122,7 @@ export class Character {
 	public get race(): RACE_TYPE { return this._race; }
 	public get gender(): GENDER_TYPE { return this._gender; }
 	public get level(): number { return this._level; }
+	public get lastTip(): number | undefined { return this._lastTip; }
 	public get guild(): any | undefined { return this._guild;}
 
 	public get databaseCharacter(): _character { return this._databaseCharacter; }

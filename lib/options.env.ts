@@ -10,9 +10,9 @@ export const TIP_LEVEL_REQUIREMENT = assertValue(
 	'Missing environment variable: TIP_LEVEL_REQUIREMENT'
 )
 export const TIP_COOLDOWN = assertValue(
-	process.env.TIP_COOLDOWN || 60, // Default cooldown in seconds for tipping
+	parseInt(process.env.TIP_COOLDOWN || '') || 60, // Default cooldown in seconds for tipping
 	'Missing environment variable: TIP_COOLDOWN'
-)
+);
 
 export const ANNOUNCE_COMMANDS_GLOBALLY = assertValue(
 	process.env.ANNOUNCE_COMMANDS_GLOBALLY || 'true', // Default to true for announcing all commands in the global channel
