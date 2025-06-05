@@ -1,6 +1,6 @@
 import mysql from 'mysql2';
 import { databaseMap, queries, QUERIES, queryArgType, expectedQueryReturnType, DATABASES } from '@azor.server/queries';
-import { MYSQL_ENDPOINT, MYSQL_USER, MYSQL_PASSWORD } from '@azor.lib/env';
+import { MYSQL_ENDPOINT, MYSQL_USER, MYSQL_PASSWORD } from '@azor.lib/conf.env';
 
 export class DATABASE {
 	private connections: Map<DATABASES, mysql.Connection> = new Map();

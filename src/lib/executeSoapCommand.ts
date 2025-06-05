@@ -1,34 +1,39 @@
-import { SOAP_USER, SOAP_PASSWORD, SOAP_ENDPOINT, SOAP_PORT } from '@azor.lib/env';
+import { SOAP_USER, SOAP_PASSWORD, SOAP_ENDPOINT, SOAP_PORT } from '@azor.lib/conf.env';
+import { TIP_ITEM_ID } from '@azor.lib/options.env';
 import http from 'http'
 
-enum SOAP_COMMANDS {
+export enum SOAP_COMMANDS {
 	// Server Commands
-	GET_SERVER_INFO,
-	GET_SERVER_STATUS,
-	GET_ONLINE_CHARACTERS,
-
-	// Player Commands
-	GET_CHARACTER_INFO,
-	GET_CHARACTER_LOCATION,
-
-	// Guild Commands
-	GET_GUILD_INFO,
+	TIP_CHARACTER,
+	TEST_COMMAND
 }
 
-const SOAP_COMMANDS_MAP: Record<SOAP_COMMANDS, string> = {
-	[SOAP_COMMANDS.GET_SERVER_INFO]: '',
-	[SOAP_COMMANDS.GET_SERVER_STATUS]: '',
-	[SOAP_COMMANDS.GET_ONLINE_CHARACTERS]: '.account onlinelist',
-	[SOAP_COMMANDS.GET_CHARACTER_INFO]: '.cache info $player_name',
-	[SOAP_COMMANDS.GET_GUILD_INFO]: '.guild info $guild_name',
-	[SOAP_COMMANDS.GET_CHARACTER_LOCATION]: ''
+const COMMANDS = {
+	[SOAP_COMMANDS.TIP_CHARACTER]: `.additem $player_name ${TIP_ITEM_ID} 1`,
+	[SOAP_COMMANDS.TEST_COMMAND]: ``
+} as const
+
+type commandArgs = {
+	[SOAP_COMMANDS.TIP_CHARACTER]: { player_name: string },
+	[SOAP_COMMANDS.TEST_COMMAND]: {}
+};
+
+type returnType = string | null;
+
+export const executeSoapCommand = {
+	[SOAP_COMMANDS.TIP_CHARACTER]: async ({ args }: { args: commandArgs[SOAP_COMMANDS.TIP_CHARACTER]}): Promise<returnType> => {
+		return await execute({
+			command: SOAP_COMMANDS.TIP_CHARACTER,
+			args});
+	},
+	[SOAP_COMMANDS.TEST_COMMAND]: async ({ args }: { args: commandArgs[SOAP_COMMANDS.TEST_COMMAND] }): Promise<returnType> => {
+		return null; // Placeholder for future commands
+	}
 }
 
-type CommandArgs = Record<string, string | number>;
+const execute = async ({ command, args }: { command: SOAP_COMMANDS, args: commandArgs[SOAP_COMMANDS] }): Promise<returnType> => {
 
-export const executeSoapCommand = async <T>({ command, args = {} }: { command: SOAP_COMMANDS, args: CommandArgs}): Promise<T | string | undefined> => {
-
-	let commandString = SOAP_COMMANDS_MAP[command];
+	let commandString = COMMANDS[command] as string;
 
 	for (const [key, value] of Object.entries(args)) {
 		commandString = commandString.replace(`$${key}`, String(value));
@@ -78,7 +83,7 @@ export const executeSoapCommand = async <T>({ command, args = {} }: { command: S
 		console.error('SOAP Error:', error.message);
 	}
 
-	// return null;
+	return null;
 }
 
 const extractSoapResponse = (xmlResponse: string): string => {

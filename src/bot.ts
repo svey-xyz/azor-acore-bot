@@ -1,7 +1,7 @@
 import { Client, Intents } from "discord.js";
 import { ready } from "@azor/listeners/ready";
 import { interactionCreate } from "@azor/listeners/interactionCreate";
-import { DISCORD_TOKEN } from "@azor.lib/env";
+import { DISCORD_TOKEN } from "@azor.lib/conf.env";
 
 const token: string = DISCORD_TOKEN;
 
