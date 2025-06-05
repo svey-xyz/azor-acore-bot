@@ -32,7 +32,7 @@ const CharacterLocation = (character: Character): string => {
 	if (character.online === false) return `**Character Location**\n${character.name} is currently offline.`;
 	if (!character.zone) return `**Character Location**\n${character.name} data not available.`;
 	return `
-**Character Location**
+**${character.name}'s Location**
 Zone: ${character.zone}
 `.trim();
 }
