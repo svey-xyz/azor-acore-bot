@@ -1,5 +1,5 @@
 import { Client } from "discord.js";
-import { deployCommands } from "../commands";
+import { deployCommands } from "@azor/commands";
 
 export const ready = (client: Client): void => {
 	client.on("ready", async () => {

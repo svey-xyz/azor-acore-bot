@@ -1,6 +1,6 @@
 import { BaseCommandInteraction, MessageEmbed, Client } from "discord.js";
 import { SlashCommandBuilder } from '@discordjs/builders';
-import { Command } from "../../command";
+import { Command } from "@azor/command";
 
 const commandData: any = new SlashCommandBuilder()
 	.setName('ping')

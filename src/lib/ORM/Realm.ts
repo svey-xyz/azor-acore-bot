@@ -1,6 +1,6 @@
-import { QUERIES } from "../../../server/queries";
-import { getDbClient } from "../db";
-import { Character, getCharacter, getCharacterByDbCharacter } from "./Character";
+import { QUERIES } from "@azor.server/queries";
+import { getDbClient } from "@azor/lib/db";
+import { Character, getCharacter, getCharacterByDbCharacter } from "@azor.ORM/Character";
 
 const db = getDbClient()
 

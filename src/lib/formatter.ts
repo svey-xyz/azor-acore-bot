@@ -1,4 +1,4 @@
-import { Character } from "./ORM/Character";
+import { Character } from "@azor.ORM/Character";
 
 export const formatBankMoney = (bankString: string): string => {
 	return bankString === '0 gold' ? 'No gold' : bankString;

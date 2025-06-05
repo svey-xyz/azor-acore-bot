@@ -1,10 +1,10 @@
 import { CommandInteraction } from "discord.js";
 
-import { Command } from "../../command";
-import { commandData } from "./commandData"
-import { status } from "./subCommands/status";
-import { info } from "./subCommands/info";
-import { location } from "./subCommands/location";
+import { Command } from "@azor/command";
+import { commandData } from "@azor.slash-commands/character/commandData"
+import { status } from "@azor.slash-commands/character/subCommands/status";
+import { info } from "@azor.slash-commands/character/subCommands/info";
+import { location } from "@azor.slash-commands/character/subCommands/location";
 
 export const character: Command = {
 	cmdData: commandData,

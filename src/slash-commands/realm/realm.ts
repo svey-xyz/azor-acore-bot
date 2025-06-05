@@ -1,11 +1,9 @@
 import { CommandInteraction } from "discord.js";
 
-import { Command } from "../../command";
-import { commandData } from "./commandData"
-// import { status } from "./subCommands/status";
-// import { characters } from "./subCommands/characters";
-import { online } from "./subCommands/online";
-import { pop } from "./subCommands/pop";
+import { Command } from "@azor/command";
+import { commandData } from "@azor.slash-commands/realm/commandData"
+import { online } from "@azor.slash-commands/realm/subCommands/online";
+import { pop } from "@azor.slash-commands/realm/subCommands/pop";
 
 export const realm: Command = {
 	cmdData: commandData,

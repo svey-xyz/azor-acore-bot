@@ -1,4 +1,4 @@
-import { DATABASE } from "../../server/DATABASE";
+import { DATABASE } from "@azor.server/DATABASE";
 
 let db: DATABASE | undefined;
 // Singleton pattern to ensure only one instance of DATABASE is created

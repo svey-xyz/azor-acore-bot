@@ -2,13 +2,13 @@
   "name": "azor-acore-bot",
   "version": "0.1.1",
   "description": "Integrated Discord bot for Azerothcore.",
-	"keywords": [
-		"discord",
-		"bot",
-		"world-of-warcraft",
-		"azerothcore",
-		"acore"
-	],
+  "keywords": [
+    "discord",
+    "bot",
+    "world-of-warcraft",
+    "azerothcore",
+    "acore"
+  ],
   "main": "dist/bot.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
@@ -39,6 +39,7 @@
     "@types/node": "^18.7.18",
     "ts-node": "^10.8.1",
     "tsc": "^2.0.4",
+    "tsconfig-paths": "^4.2.0",
     "typescript": "^4.8.3"
   }
 }

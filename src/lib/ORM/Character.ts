@@ -1,5 +1,5 @@
-import { getDbClient } from "../db";
-import { CLASS_TYPE, GENDER_TYPE, RACE_TYPE, ZONE_TYPE, AcoreTypeMaps } from "./AcoreTypeMaps";
+import { getDbClient } from "@azor/lib/db";
+import { CLASS_TYPE, GENDER_TYPE, RACE_TYPE, ZONE_TYPE, AcoreTypeMaps } from "@azor.ORM/AcoreTypeMaps";
 import { QUERIES } from "server/queries";
 
 const db = getDbClient()

@@ -1,7 +1,7 @@
 import { CommandInteraction } from "discord.js";
-import { formatter, ORM_OBJECTS } from "../../../lib/formatter";
-import { getCharacter } from "../../../lib/ORM/Character";
-import { SubCommand } from "src/subCommand";
+import { formatter, ORM_OBJECTS } from "@azor/lib/formatter";
+import { getCharacter } from "@azor.ORM/Character";
+import { SubCommand } from "@azor/subCommand";
 
 export const location: SubCommand = {
 	async execute(commandInteraction: CommandInteraction) {

@@ -1,11 +1,11 @@
 {
 	"compilerOptions": {
 		"target": "ESNext",
-		"module": "commonjs",
+		"module": "nodenext",
 		"rootDir": "./",
 		"outDir": "./dist/",
 		"strict": true,
-		"moduleResolution": "node",
+		"moduleResolution": "nodenext",
 		"importHelpers": true,
 		"experimentalDecorators": true,
 		"esModuleInterop": true,
@@ -17,21 +17,29 @@
 		// "noImplicitAny": false,
 		"typeRoots": [
 			"node_modules/@types",
-			"@types",
-			"@types/global.d.ts"
 		],
 		"sourceMap": false,
-		"baseUrl": "./"
+		"baseUrl": "./",
+		"paths": {
+			"@azor.types/*": ["@types/*"],
+			"@azor/*": ["src/*"],
+			"@azor.server/*": ["server/*"],
+			"@azor.lib/*": ["lib/*"],
+			"@azor.ORM/*": ["src/lib/ORM/*"],
+			"@azor.slash-commands/*": ["src/slash-commands/*"],
+		}
 	},
 	"ts-node": {
-		"files": true
+		"files": true,
+		"require": [
+			"tsconfig-paths/register"
+		]
 	},
 	"files": [
 		"src/bot.ts"
 	],
 	"include": [
-		"./**/*.ts",
-		"/@types/*.d.ts"
+		"**/*.ts",
 	],
 	"exclude": [
 		"node_modules",

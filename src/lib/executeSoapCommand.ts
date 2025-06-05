@@ -1,4 +1,4 @@
-import { SOAP_USER, SOAP_PASSWORD, SOAP_ENDPOINT, SOAP_PORT } from '../../lib/env';
+import { SOAP_USER, SOAP_PASSWORD, SOAP_ENDPOINT, SOAP_PORT } from '@azor.lib/env';
 import http from 'http'
 
 enum SOAP_COMMANDS {

@@ -1,4 +1,4 @@
-import { capitalize } from "../lib/stringFunctions";
+import { capitalize } from "@azor.lib/stringFunctions";
 
 export const enum DATABASES {
 	CHARACTERS = "acore_characters",

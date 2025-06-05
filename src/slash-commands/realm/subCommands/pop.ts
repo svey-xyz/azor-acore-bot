@@ -1,9 +1,7 @@
 import { CommandInteraction } from "discord.js";
-// import { getCharacter } from "../../../lib/ORM/Character";
-// import { Character } from "src/lib/ORM/Character";
-import { SubCommand } from "src/subCommand";
-import { formatter, ORM_OBJECTS } from "../../../lib/formatter";
-import { getOnlineCharacters } from "../../../lib/ORM/Realm";
+import { SubCommand } from "@azor/subCommand";
+import { formatter, ORM_OBJECTS } from "@azor/lib/formatter";
+import { getOnlineCharacters } from "@azor.ORM/Realm";
 // import { Server } from "soap";
 
 export const pop: SubCommand = {
