@@ -13,7 +13,16 @@ const characters = new Map<string, _c>();
 
 export const getCharacter = async (username: string, forceNoCache: boolean = false): Promise<Character> => {
 	if (!characters.has(username)) return await updateCachedCharacter(username);
+	return await addCachedCharacter(characters.get(username)!.char, forceNoCache);
+}
 
+export const getCharacterByDbCharacter = async (db_character: _character, forceNoCache: boolean = false): Promise<Character> => {
+	if (!characters.has(db_character.name)) return updateCachedCharacterFromDb(db_character);
+	return await addCachedCharacter(characters.get(db_character.name)!.char, forceNoCache);
+}
+
+const addCachedCharacter = async (character: Character, forceNoCache: boolean = false): Promise<Character> => {
+	const username = character.name;
 	const _c = characters.get(username)!;
 	if (!_c) throw new Error(`Character not found in cache: ${username}`);
 	let cacheDuration = 1000 * 60 * 5; // 5 minute default cache duration
@@ -27,6 +36,13 @@ export const getCharacter = async (username: string, forceNoCache: boolean = fal
 
 	// Otherwise, fetch the character again
 	return await updateCachedCharacter(username);
+}
+
+const updateCachedCharacterFromDb = (db_character: _character): Character => {
+	const character = Character.createCharacterFromDb(db_character);
+	characters.set(db_character.name, { age: Date.now(), char: character });
+
+	return character;
 }
 
 const updateCachedCharacter = async (username: string): Promise<Character> => {
@@ -67,8 +83,12 @@ export class Character {
 		this._guild = db_character.guild // TODO: Fetch guild info
 	}
 
+	public static createCharacterFromDb = (db_character: _character) => {
+		return new Character({ db_character });
+	}
+
 	public static createCharacter = async (username: string) => {
-		const databaseCharacter = await db.query(QUERIES.GET_CHARACTER_BY_NAME, { username });
+		const databaseCharacter = await db.query[QUERIES.GET_CHARACTER_BY_NAME]({ username });
 		if (!databaseCharacter) throw new Error(`Error fetching character with name: ${username}.`);
 
 		return new Character({ db_character: databaseCharacter });

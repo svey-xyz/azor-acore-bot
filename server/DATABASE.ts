@@ -1,5 +1,5 @@
 import mysql from 'mysql2';
-import { databaseMap, queries, QUERIES, queryArgs, expectedQueryReturnType, DATABASES } from './queries';
+import { databaseMap, queries, QUERIES, queryArgType, expectedQueryReturnType, DATABASES } from './queries';
 import { MYSQL_ENDPOINT, MYSQL_USER, MYSQL_PASSWORD } from '../lib/env';
 
 export class DATABASE {
@@ -37,9 +37,20 @@ export class DATABASE {
 		}
 	}
 
-	public query(_Q: QUERIES, values: queryArgs[typeof _Q]): Promise<expectedQueryReturnType[typeof _Q]> {
+	public query = {
+		[QUERIES.GET_CHARACTER_BY_NAME]:
+			(args: queryArgType[QUERIES.GET_CHARACTER_BY_NAME]) =>
+				this.db_query<expectedQueryReturnType[QUERIES.GET_CHARACTER_BY_NAME]>(QUERIES.GET_CHARACTER_BY_NAME, args),
+
+		[QUERIES.GET_ONLINE_CHARACTERS]:
+			(args: queryArgType[QUERIES.GET_ONLINE_CHARACTERS]) =>
+				this.db_query<expectedQueryReturnType[QUERIES.GET_ONLINE_CHARACTERS]>(QUERIES.GET_ONLINE_CHARACTERS, args)
+	}
+
+	private db_query<T>(_Q: QUERIES, args: queryArgType[typeof _Q]): Promise<T> {
+	
 		const database = databaseMap[_Q];
-		const query = queries[_Q]({ args: values});
+		const query = queries({ _Q, args });
 
 		if (!this.connections.has(database)) {
 			console.warn(`No connection found for database: ${database}, executing query on a new connection.`);
@@ -48,12 +59,12 @@ export class DATABASE {
 
 		return new Promise((resolve, reject) => {
 			const _C = this.getConnection(database);
-			_C.query(query, values, (error, results) => {
+			_C.query(query, args, (error, results) => {
 				if (error) {
 					console.error(`Error executing query on ${database}:`, error);
 					reject(error);
 				} else {
-					resolve((results as Array<{}>)[0] as expectedQueryReturnType[typeof _Q]);
+					resolve(results as T);
 				}
 			});
 		});

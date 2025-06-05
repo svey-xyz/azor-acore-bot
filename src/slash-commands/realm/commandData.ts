@@ -18,3 +18,8 @@ export const commandData = new SlashCommandBuilder()
 			.setName('online')
 			.setDescription(`List all online characters.`)
 	)
+	.addSubcommand((subcommand: SlashCommandSubcommandBuilder) =>
+		subcommand
+			.setName('pop')
+			.setDescription(`Realm online population.`)
+	)

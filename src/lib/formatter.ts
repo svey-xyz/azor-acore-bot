@@ -45,13 +45,27 @@ Online: ${character.online ? "Yes" : "No"}
 `.trim();
 }
 
+const RealmOnlineCharacters = (characters: Character[]): string => {
+	return characters.length === 0
+		? "No characters are currently online."
+		:
+`**Online Characters**
+${characters.map(c => `${c.name}\n`)}`
+}
+
+const RealmPop = (characters: Character[]): string => {
+	return `**Realm Online Count: ** ${characters.length}`
+}
+
 export const enum ORM_OBJECTS {
 	CHARACTER,
 	GUILD,
+	REALM
 }
 
 type ObjectFormatOptions = {
 	[ORM_OBJECTS.CHARACTER]: 'info' | 'location' | 'status',
+	[ORM_OBJECTS.REALM]: 'online' | 'pop'
 };
 
 const ObjectFormatFns = {
@@ -60,6 +74,10 @@ const ObjectFormatFns = {
 		location: CharacterLocation,
 		status: CharacterStatus
 	},
+	[ORM_OBJECTS.REALM]: {
+		online: RealmOnlineCharacters,
+		pop: RealmPop
+	}
 }
 
 
@@ -68,6 +86,10 @@ type formatArgs = {
 		character: Character,
 		format: ObjectFormatOptions[ORM_OBJECTS.CHARACTER],
 	},
+	[ORM_OBJECTS.REALM]: {
+		characters: Character[],
+		format: ObjectFormatOptions[ORM_OBJECTS.REALM],
+	}
 }
 
 export const formatter = {
@@ -75,5 +97,10 @@ export const formatter = {
 		const formatFn = ObjectFormatFns[ORM_OBJECTS.CHARACTER][args.format];
 		if (!formatFn) throw new Error("Invalid format option provided.");
 		return formatFn(args.character);
+	},
+	[ORM_OBJECTS.REALM]: ({ args }: { args: formatArgs[ORM_OBJECTS.REALM]}): string => {
+		const formatFn = ObjectFormatFns[ORM_OBJECTS.REALM][args.format];
+		if (!formatFn) throw new Error("Invalid format option provided.");
+		return formatFn(args.characters);
 	}
 }

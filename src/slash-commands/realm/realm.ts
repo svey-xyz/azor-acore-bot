@@ -4,9 +4,10 @@ import { Command } from "../../command";
 import { commandData } from "./commandData"
 // import { status } from "./subCommands/status";
 // import { characters } from "./subCommands/characters";
-// import { online } from "./subCommands/online";
+import { online } from "./subCommands/online";
+import { pop } from "./subCommands/pop";
 
-export const character: Command = {
+export const realm: Command = {
 	cmdData: commandData,
 	async execute(commandInteraction: CommandInteraction) {
 		switch (commandInteraction.options.getSubcommand()) {
@@ -17,7 +18,10 @@ export const character: Command = {
 				// characters.execute(commandInteraction)
 				break;
 			case ('online'):
-				// online.execute(commandInteraction)
+				online.execute(commandInteraction)
+				break;
+			case ('pop'):
+				pop.execute(commandInteraction)
 				break;
 			default:
 				commandInteraction.reply({ content: `No command found!` })

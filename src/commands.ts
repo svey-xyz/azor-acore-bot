@@ -4,6 +4,7 @@ import { Collection } from 'discord.js';
 import { Command } from './command';
 import { DISCORD_CLIENT_ID, DISCORD_TOKEN } from '../lib/env';
 import { character } from './slash-commands/character/character';
+import { realm } from './slash-commands/realm/realm';
 
 
 
@@ -12,6 +13,7 @@ export function deployCommands(client: any): Array<JSON> {
 
 	const COMMANDS: Array<Command> = [
 		character,
+		realm
 	// Add other commands here as needed
 	]
 
