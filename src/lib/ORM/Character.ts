@@ -11,9 +11,10 @@ type _c = {
 
 const characters = new Map<string, _c>();
 
-export const getCharacter = async (username: string, forceNoCache: boolean = false): Promise<Character> => {
+export const getCharacterByName = async (username: string, forceNoCache: boolean = false): Promise<Character> => {
 	if (!characters.has(username)) return await updateCachedCharacter(username);
-	return await addCachedCharacter(characters.get(username)!.char, forceNoCache);
+	const char= await addCachedCharacter(characters.get(username)!.char, forceNoCache);
+	return char
 }
 
 export const getCharacterByDbCharacter = async (db_character: _character, forceNoCache: boolean = false): Promise<Character> => {
@@ -71,16 +72,16 @@ export class Character {
 
 		// Assign properties from the database character
 		this._name = db_character.name;
-		this._accountId = db_character.accountId; // TODO: Fetch account info
+		this._accountId = db_character.account; // TODO: Fetch account info
 		this._online = db_character.online == 1;
-		this._mapId = db_character.mapId || undefined; // Use mapId if it exists, otherwise undefined
-		// If zoneId exists, map it to a zone name, otherwise set to undefined
-		this._zone = db_character.zoneId ? AcoreTypeMaps.zoneName(db_character.zoneId) : undefined;
+		this._mapId = db_character.map || undefined; // Use mapId if it exists, otherwise undefined
+		// If zone exists, map it to a zone name, otherwise set to undefined
+		this._zone = db_character.zone ? AcoreTypeMaps.zoneName(db_character.zone) : undefined;
 		this._class = AcoreTypeMaps.className(db_character.class);
 		this._race = AcoreTypeMaps.raceName(db_character.race);
 		this._gender = AcoreTypeMaps.genderName(db_character.gender);
 		this._level = db_character.level;
-		this._guild = db_character.guild // TODO: Fetch guild info
+		// this._guild = db_character.gui // TODO: Fetch guild info
 	}
 
 	public static createCharacterFromDb = (db_character: _character) => {
@@ -88,10 +89,10 @@ export class Character {
 	}
 
 	public static createCharacter = async (username: string) => {
-		const databaseCharacter = await db.query[QUERIES.GET_CHARACTER_BY_NAME]({ username });
-		if (!databaseCharacter) throw new Error(`Error fetching character with name: ${username}.`);
+		const databaseCharacters = await db.query[QUERIES.GET_CHARACTER_BY_NAME]({ username });
+		if (!databaseCharacters) throw new Error(`Error fetching character with name: ${username}.`);
 
-		return new Character({ db_character: databaseCharacter });
+		return new Character({ db_character: databaseCharacters[0] });
 	}
 
 	public get name(): string { return this._name; }

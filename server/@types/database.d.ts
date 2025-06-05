@@ -8,7 +8,7 @@ interface _account {
 	online: number;
 	os: string;
 	
-	[string: string]: any; // Allow additional properties
+	// [string: string]: any; // Allow additional properties
 }
 
 interface _character {
@@ -95,5 +95,5 @@ interface _character {
 
 	// These are all known properties as of 2025-06-03
 
-	[string: string]: any; // Allow additional properties
+	// [string: string]: any; // Allow additional properties
 }

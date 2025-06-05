@@ -33,7 +33,6 @@ const CharacterLocation = (character: Character): string => {
 	if (!character.zone) return `**Character Location**\n${character.name} data not available.`;
 	return `
 **Character Location**
-Map ID: ${character.mapId}
 Zone: ${character.zone}
 `.trim();
 }

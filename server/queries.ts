@@ -26,7 +26,7 @@ export type queryArgType = {
 }
 
 export type expectedQueryReturnType = {
-	[QUERIES.GET_CHARACTER_BY_NAME]: _character | null,
+	[QUERIES.GET_CHARACTER_BY_NAME]: _character[] | null,
 	[QUERIES.GET_ONLINE_CHARACTERS]: _character[],
 }
 
