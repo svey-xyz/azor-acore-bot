@@ -1,16 +1,18 @@
 import { QUERIES } from "@azor.server/queries";
 import { getDbClient } from "@azor/lib/db";
-import { Character, getCharacterByName, getCharacterByDbCharacter } from "@azor.ORM/Character";
+import { Character } from "@azor.ORM/Character";
+import { ORMObject } from "@azor/lib/ORM/ORMObject";
 
-const db = getDbClient()
 
-export class Realm {
+export class Realm  {
 	private _onlineCharacters: Array<Character> = [];
 
 	public constructor() {
 	}
 
 	private updateOnlineCharacters = async () => {
+		const db = getDbClient()
+
 		const onlineCharacters = await db.query[QUERIES.GET_ONLINE_CHARACTERS]({});
 		if (!onlineCharacters) {
 			this._onlineCharacters = [];

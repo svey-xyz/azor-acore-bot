@@ -1,75 +1,9 @@
 import { getDbClient } from "@azor/lib/db";
 import { CLASS_TYPE, GENDER_TYPE, RACE_TYPE, ZONE_TYPE, AcoreTypeMaps } from "@azor.ORM/AcoreTypeMaps";
 import { QUERIES } from "server/queries";
+import { ORMObject } from "@azor/lib/ORM/ORMObject";
 
-const db = getDbClient()
-
-type _c = {
-	age: number,
-	char: Character
-}
-
-const characters = new Map<string, _c>();
-
-export const getCharacterByName = async (username: string, forceNoCache: boolean = false) => {
-
-	try {
-		if (!characters.has(username)) return await updateCachedCharacter(username);
-		const char = await addCachedCharacter(characters.get(username)!.char, forceNoCache);
-		return char
-	} catch (error) {
-		console.error(`Error fetching character by name: ${username}`, error);
-		return Promise.reject(new Error(`Error fetching character by name: ${username}`));
-	}
-
-}
-
-export const getCharacterByDbCharacter = async (db_character: _character, forceNoCache: boolean = false) => {
-
-	try {
-		if (!characters.has(db_character.name)) return updateCachedCharacterFromDb(db_character);
-		const char = await addCachedCharacter(characters.get(db_character.name)!.char, forceNoCache);
-		return char
-	} catch (error) {
-		console.error(`Error fetching character by database.`, error);
-		return Promise.reject(new Error(`Error fetching character database.`));
-	}
-	
-}
-
-const addCachedCharacter = async (character: Character, forceNoCache: boolean = false): Promise<Character> => {
-	const username = character.name;
-	const _c = characters.get(username)!;
-	if (!_c) throw new Error(`Character not found in cache: ${username}`);
-	let cacheDuration = 1000 * 60 * 5; // 5 minute default cache duration
-	// If the character is online, reduce cache duration to 1 minute
-	// This is to ensure that online characters are updated more frequently
-	if (_c.char.online) cacheDuration = 1000 * 60 * 1;
-	if (forceNoCache) cacheDuration = 0; // Force no cache
-	// If the character is still within the cache duration, return it
-	if (_c.age > Date.now() - cacheDuration) return _c.char
-	else characters.delete(username); // Remove the character from cache if it has expired
-
-	// Otherwise, fetch the character again
-	return await updateCachedCharacter(username);
-}
-
-const updateCachedCharacterFromDb = (db_character: _character): Character => {
-	const character = Character.createCharacterFromDb(db_character);
-	characters.set(db_character.name, { age: Date.now(), char: character });
-
-	return character;
-}
-
-const updateCachedCharacter = async (username: string): Promise<Character> => {
-	const character = await Character.createCharacter(username);
-	characters.set(username, { age: Date.now(), char: character });
-	return character;
-}
-
-// export type CharacterORM_Type = typeof Character;
-
-export class Character {
+export class Character extends ORMObject<_character> {
 	private _name: string;
 	private _accountId: number;
 	private _online: boolean;
@@ -81,34 +15,34 @@ export class Character {
 	private _level: number;
 	private _lastTip?: number; // Timestamp of the last time the character was updated
 	private _guild?: any | undefined; //TODO: Define GuildInfo type and use it here
-	private _databaseCharacter: _character;
 
-	private constructor({ db_character }: { db_character:_character}) {
-		this._databaseCharacter = db_character;
-
+	constructor({ key, db_obj }: { key: string, db_obj:_character}) {
+		super({ key, db_obj });
 		// Assign properties from the database character
-		this._name = db_character.name;
-		this._accountId = db_character.account; // TODO: Fetch account info
-		this._online = db_character.online == 1;
-		this._mapId = db_character.map || undefined; // Use mapId if it exists, otherwise undefined
+		this._name = db_obj.name;
+		this._accountId = db_obj.account; // TODO: Fetch account info
+		this._online = db_obj.online == 1;
+		this._mapId = db_obj.map || undefined; // Use mapId if it exists, otherwise undefined
 		// If zone exists, map it to a zone name, otherwise set to undefined
-		this._zone = db_character.zone ? AcoreTypeMaps.zoneName(db_character.zone) : undefined;
-		this._class = AcoreTypeMaps.className(db_character.class);
-		this._race = AcoreTypeMaps.raceName(db_character.race);
-		this._gender = AcoreTypeMaps.genderName(db_character.gender);
-		this._level = db_character.level;
+		this._zone = db_obj.zone ? AcoreTypeMaps.zoneName(db_obj.zone) : undefined;
+		this._class = AcoreTypeMaps.className(db_obj.class);
+		this._race = AcoreTypeMaps.raceName(db_obj.race);
+		this._gender = AcoreTypeMaps.genderName(db_obj.gender);
+		this._level = db_obj.level;
 		// this._guild = db_character.gui // TODO: Fetch guild info
 	}
 
-	public static createCharacterFromDb = (db_character: _character) => {
-		return new Character({ db_character });
+	public static createCharacterFromDb = (db_obj: _character) => {
+		return new Character({ key: db_obj.name, db_obj });
 	}
 
-	public static createCharacter = async (username: string) => {
-		const databaseCharacters = await db.query[QUERIES.GET_CHARACTER_BY_NAME]({ username });
-		if (!databaseCharacters || !databaseCharacters[0]) throw new Error(`Error fetching character with name: ${username}.`);
+	public static createFromKey = async (key: string) => {
+		const db = getDbClient()
 
-		return new Character({ db_character: databaseCharacters[0] });
+		const databaseCharacters = await db.query[QUERIES.GET_CHARACTER_BY_NAME]({ username: key });
+		if (!databaseCharacters || !databaseCharacters[0]) throw new Error(`Error fetching character with name: ${key}.`);
+
+		return new Character({ key, db_obj: databaseCharacters[0] });
 	}
 
 	public set lastTip(time: number | undefined) { this._lastTip = time;}
@@ -124,6 +58,4 @@ export class Character {
 	public get level(): number { return this._level; }
 	public get lastTip(): number | undefined { return this._lastTip; }
 	public get guild(): any | undefined { return this._guild;}
-
-	public get databaseCharacter(): _character { return this._databaseCharacter; }
 }
