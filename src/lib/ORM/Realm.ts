@@ -1,8 +1,6 @@
 import { QUERIES } from "@azor.server/queries";
-import { getDbClient } from "@azor/lib/db";
+import { DB_HANDLER, getDbClient } from "@azor/lib/db";
 import { Character } from "@azor.ORM/Character";
-import { ORMObject } from "@azor/lib/ORM/ORMObject";
-
 
 export class Realm  {
 	private _onlineCharacters: Array<Character> = [];
@@ -20,7 +18,8 @@ export class Realm  {
 		}
 
 		const chars = onlineCharacters?.flatMap(async (c) => {
-			const character = await getCharacterByDbCharacter(c, true)
+			const DB = DB_HANDLER;
+			const character = DB.getCharacter({username: c.name, db_obj: c, forceNoCache: true})
 			return character
 		})
 		this._onlineCharacters = await Promise.all(chars);

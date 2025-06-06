@@ -1,15 +1,14 @@
 import { CommandInteraction } from "discord.js";
 import { SubCommand } from "@azor/subCommand";
 import { formatter, ORM_OBJECTS } from "@azor/lib/formatter";
-import { getCharacterByName } from "@azor.ORM/Character";
+import { DB_HANDLER } from "@azor/lib/db";
 
 export const status: SubCommand = {
 	async execute(commandInteraction: CommandInteraction) {
 		const username = commandInteraction.options.getString("username") || '';
 
 		try {
-			// Attempt to get the character by name
-			const character = await getCharacterByName(username)
+			const character = await DB_HANDLER.getCharacter({ username })
 
 			// Handle promise resolution
 			const reply = formatter[ORM_OBJECTS.CHARACTER]({args: {character, format: 'status'}});		

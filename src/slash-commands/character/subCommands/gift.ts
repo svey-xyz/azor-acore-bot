@@ -2,12 +2,12 @@ import { CommandInteraction } from "discord.js";
 import { SlashCommandBuilder } from '@discordjs/builders';
 import { Command } from "@azor/command";
 import { executeSoapCommand, SOAP_COMMANDS } from "@azor/lib/executeSoapCommand";
-import { getCharacterByName } from "@azor.ORM/Character";
 import { TIP_COOLDOWN, TIP_ITEM_ID as GIFT_ITEM_ENTRY } from "@azor.lib/options.env";
-import { getItemByEntry } from "@azor/lib/ORM/Item";
+import { DB_HANDLER } from "@azor/lib/db";
+// import { getItemByEntry } from "@azor/lib/ORM/Item";
 
 let giftName = ''
-const gift = getItemByEntry(GIFT_ITEM_ENTRY).then((item) => {
+const gift = DB_HANDLER.getItem({ entry: GIFT_ITEM_ENTRY }).then((item) => {
 	giftName = item.name
 })
 
@@ -23,7 +23,7 @@ export const tip: Command = {
 		const username = commandInteraction.options.getString('username') || ''; // TODO: sanitize input
 
 		try {
-			const character = await getCharacterByName(username)
+			const character = await DB_HANDLER.getCharacter({ username })
 			
 			// Handle successful promise resolution
 			let reply = '';

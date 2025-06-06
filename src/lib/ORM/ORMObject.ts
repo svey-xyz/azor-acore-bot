@@ -9,8 +9,8 @@ export class ORMObject<dbT> {
 		this._db_obj = db_obj;
 	}
 
-	public static createFromKey = async (key: string): Promise<ORMObject<emptyDbObject>> => {
-		return new ORMObject<emptyDbObject>({ key, db_obj: {} })
+	public static createFromKey = async (key: string, db_obj?: any): Promise<ORMObject<emptyDbObject>> => {
+		return new ORMObject<emptyDbObject>({ key, db_obj: db_obj })
 	}
 
 	public get key(): string { return this._key; }

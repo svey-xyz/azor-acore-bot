@@ -36,3 +36,14 @@ export const commandData = new SlashCommandBuilder()
 						.setRequired(true)
 			)
 	)
+	.addSubcommand((subcommand: SlashCommandSubcommandBuilder) =>
+		subcommand
+			.setName('gift')
+			.setDescription(`Gift a character.`)
+			.addStringOption(
+				(option: SlashCommandStringOption) =>
+					option.setName('username')
+						.setDescription(`Character's name.`)
+						.setRequired(true)
+			)
+	)

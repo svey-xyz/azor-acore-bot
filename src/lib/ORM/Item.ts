@@ -25,15 +25,26 @@ export class Item extends ORMObject<_item> {
 	// 	return new Item({ key: String(db_obj.entry), db_obj });
 	// }
 
-	public static override createFromKey = async (key: string) => {
-		const db = getDbClient()
-		const entry = parseInt(key)
+	public static override createFromKey = async (key: string, db_obj?: _item) => {
+		if (db_obj) return new Item({ key, db_obj });
 
-		const databaseItems = await db.query[QUERIES.GET_ITEM_BY_ENTRY]({ entry });
-		if (!databaseItems || !databaseItems[0]) throw new Error(`Error fetching item with entry: ${entry}.`);
+		const db = getDbClient()
+
+		const databaseItems = await db.query[QUERIES.GET_ITEM_BY_ENTRY]({ entry: parseInt(key) });
+		if (!databaseItems || !databaseItems[0]) throw new Error(`Error fetching item with entry: ${key}.`);
 
 		return new Item({ key, db_obj: databaseItems[0] });
 	}
+
+	// public static override createFromKey = async (key: string) => {
+	// 	const db = getDbClient()
+	// 	const entry = parseInt(key)
+
+	// 	const databaseItems = await db.query[QUERIES.GET_ITEM_BY_ENTRY]({ entry });
+	// 	if (!databaseItems || !databaseItems[0]) throw new Error(`Error fetching item with entry: ${entry}.`);
+
+	// 	return new Item({ key, db_obj: databaseItems[0] });
+	// }
 
 	public get name(): string { return this._name; }
 	public get entry(): number { return this._entry; }

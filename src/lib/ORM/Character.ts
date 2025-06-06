@@ -32,11 +32,9 @@ export class Character extends ORMObject<_character> {
 		// this._guild = db_character.gui // TODO: Fetch guild info
 	}
 
-	public static createCharacterFromDb = (db_obj: _character) => {
-		return new Character({ key: db_obj.name, db_obj });
-	}
+	public static override createFromKey = async (key: string, db_obj?: _character) => {
+		if (db_obj) return new Character({ key, db_obj });
 
-	public static createFromKey = async (key: string) => {
 		const db = getDbClient()
 
 		const databaseCharacters = await db.query[QUERIES.GET_CHARACTER_BY_NAME]({ username: key });
