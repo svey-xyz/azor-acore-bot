@@ -1,7 +1,7 @@
 import { assertValue } from "@azor.lib/assertValue";
 
 export const TIP_ITEM_ID = assertValue(
-	process.env.TIP_ITEM_ID || 11966, // Default item ID for tips - Small Sack of Coins
+	parseInt(process.env.TIP_ITEM_ID || '') || 11966, // Default item ID for tips - Small Sack of Coins
 	'Missing environment variable: TIP_ITEM_ID'
 )
 

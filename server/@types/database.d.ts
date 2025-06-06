@@ -109,8 +109,8 @@ interface _item {
 	Flags: number;
 	FlagsExtra: number;
 	BuyCount: number;
-	BuyPrice: number;
-	SellPrice: number;
+	BuyPrice?: number;
+	SellPrice?: number;
 	InventoryType: number;
 	AllowableClass: number;
 	AllowableRace: number;
@@ -201,7 +201,7 @@ interface _item {
 	spellcategory_5: number;
 	spellcategorycooldown_5: number;
 	bonding: number;
-	description: string;
+	description?: string;
 	PageText: number;
 	LanguageID: number;
 	PageMaterial: number;

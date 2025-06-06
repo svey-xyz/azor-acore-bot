@@ -44,7 +44,11 @@ export class DATABASE {
 
 		[QUERIES.GET_ONLINE_CHARACTERS]:
 			(args: queryArgType[QUERIES.GET_ONLINE_CHARACTERS]) =>
-				this.db_query<expectedQueryReturnType[QUERIES.GET_ONLINE_CHARACTERS]>(QUERIES.GET_ONLINE_CHARACTERS, args)
+				this.db_query<expectedQueryReturnType[QUERIES.GET_ONLINE_CHARACTERS]>(QUERIES.GET_ONLINE_CHARACTERS, args),
+			
+		[QUERIES.GET_ITEM_BY_ENTRY]:
+			(args: queryArgType[QUERIES.GET_ITEM_BY_ENTRY]) =>
+				this.db_query<expectedQueryReturnType[QUERIES.GET_ITEM_BY_ENTRY]>(QUERIES.GET_ITEM_BY_ENTRY, args)
 	}
 
 	private db_query<T>(_Q: QUERIES, args: queryArgType[typeof _Q]): Promise<T> {

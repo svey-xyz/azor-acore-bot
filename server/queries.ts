@@ -31,9 +31,9 @@ export type queryArgType = {
 }
 
 export type expectedQueryReturnType = {
-	[QUERIES.GET_CHARACTER_BY_NAME]: _character[] | null,
+	[QUERIES.GET_CHARACTER_BY_NAME]: _character[],
 	[QUERIES.GET_ONLINE_CHARACTERS]: _character[],
-	[QUERIES.GET_ITEM_BY_ENTRY]: _item[] | null,
+	[QUERIES.GET_ITEM_BY_ENTRY]: _item[],
 }
 
 export const queries = ({ _Q, args }: {_Q: QUERIES, args: queryArgType[typeof _Q]}) => {

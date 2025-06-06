@@ -3,12 +3,18 @@ import { SlashCommandBuilder } from '@discordjs/builders';
 import { Command } from "@azor/command";
 import { executeSoapCommand, SOAP_COMMANDS } from "@azor/lib/executeSoapCommand";
 import { getCharacterByName } from "@azor.ORM/Character";
-import { TIP_COOLDOWN } from "@azor.lib/options.env";
+import { TIP_COOLDOWN, TIP_ITEM_ID as GIFT_ITEM_ENTRY } from "@azor.lib/options.env";
+import { getItemByEntry } from "@azor/lib/ORM/Item";
+
+let giftName = ''
+const gift = getItemByEntry(GIFT_ITEM_ENTRY).then((item) => {
+	giftName = item.name
+})
 
 export const tip: Command = {
 	cmdData: new SlashCommandBuilder()
-		.setName('tip')
-		.setDescription("Tip the character.")
+		.setName('gift')
+		.setDescription(`Gift ${giftName} to the character.`)
 		.addStringOption(option => 
 			option.setName('username')
 				.setDescription("Character's name.")
