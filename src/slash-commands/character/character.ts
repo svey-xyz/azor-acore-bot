@@ -5,6 +5,8 @@ import { commandData } from "@azor.slash-commands/character/commandData"
 import { status } from "@azor.slash-commands/character/subCommands/status";
 import { info } from "@azor.slash-commands/character/subCommands/info";
 import { location } from "@azor.slash-commands/character/subCommands/location";
+import { gift } from "@azor.slash-commands/character/subCommands/gift";	
+
 
 export const character: Command = {
 	cmdData: commandData,
@@ -19,8 +21,11 @@ export const character: Command = {
 			case ('location'):
 				location.execute(commandInteraction)
 				break;
+			case ('gift'):
+				gift.execute(commandInteraction)
+				break;
 			default:
-				commandInteraction.reply({ content: `No command found!` })
+				commandInteraction.reply({ content: `No command found!`, ephemeral: true })
 				break;
 		}
 	},

@@ -33,6 +33,7 @@
     "dotenv": "^16.0.1",
     "dotenv-expand": "^8.0.3",
     "mysql2": "^3.14.1",
+    "pretty-ms": "^9.2.0",
     "soap": "^1.1.12"
   },
   "devDependencies": {

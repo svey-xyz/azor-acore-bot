@@ -1,5 +1,5 @@
 import { SOAP_USER, SOAP_PASSWORD, SOAP_ENDPOINT, SOAP_PORT } from '@azor.lib/conf.env';
-import { TIP_ITEM_ID } from '@azor.lib/options.env';
+import { GIFT_ITEM_ENTRY } from '@azor.lib/options.env';
 import http from 'http'
 
 export enum SOAP_COMMANDS {
@@ -9,7 +9,7 @@ export enum SOAP_COMMANDS {
 }
 
 const COMMANDS = {
-	[SOAP_COMMANDS.TIP_CHARACTER]: `.additem $player_name ${TIP_ITEM_ID} 1`,
+	[SOAP_COMMANDS.TIP_CHARACTER]: `.additem $player_name ${GIFT_ITEM_ENTRY} 1`,
 	[SOAP_COMMANDS.TEST_COMMAND]: ``
 } as const
 

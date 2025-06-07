@@ -31,7 +31,7 @@ type cachedObject<T> = {
 
 class DataHandler {
 	private _realm = new Realm()
-	private _defaultCacheDuration: number = 100000;
+	private _defaultCacheDuration: number = 1000 * 60 * 5; // 5min default cache
 	private _characters = new Map<string, cachedObject<Character>>()
 	private _items = new Map<string, cachedObject<Item>>()
 	private _discordAccounts = new Map<string, cachedObject<DiscordAccount>>()
@@ -50,8 +50,9 @@ class DataHandler {
 	}:{
 		username: string, db_obj?:{}, cacheDuration?: number, forceNoCache?: boolean
 	}): Promise<Character> => {
-		const c = await this.getCachedData<Character>({ cache: 'characters', key: username, fn: Character.createFromKey, db_obj, cacheDuration, forceNoCache})
-		if (c?.obj && typeof c.obj == typeof Character) return c?.obj as Character
+		const c = await this.getCachedData<Character>({ cache: 'characters', key: username, fn: Character.create, db_obj, cacheDuration, forceNoCache})
+		if (c?.obj ) return c?.obj as Character
+			// && typeof c.obj == typeof Character
 		return Promise.reject(new Error(`Error fetching character ${username}`))
 	}
 
@@ -60,9 +61,21 @@ class DataHandler {
 	} : {
 		entry: number, db_obj?: {}, cacheDuration?: number, forceNoCache?: boolean
 	}): Promise<Item> => {
-		const i = await this.getCachedData<Item>({ cache: 'items', key: String(entry), fn: Item.createFromKey, db_obj, cacheDuration, forceNoCache })
-		if (i?.obj && typeof i.obj == typeof Item) return i?.obj as Item
+		const i = await this.getCachedData<Item>({ cache: 'items', key: String(entry), fn: Item.create, db_obj, cacheDuration, forceNoCache })
+		if (i?.obj ) return i?.obj as Item
+			// && typeof i.obj == typeof Item
 		return Promise.reject(new Error(`Error fetching item with entry ${entry}`))
+	}
+
+	public getDiscordAccount = async ({
+		id, db_obj, cacheDuration = this._defaultCacheDuration, forceNoCache = false
+	} : {
+		id: string, db_obj?: {}, cacheDuration?: number, forceNoCache?: boolean
+	}): Promise<DiscordAccount> => {
+		const da = await this.getCachedData<DiscordAccount>({ cache: 'discordAccounts', key: id, fn: DiscordAccount.create, db_obj, cacheDuration, forceNoCache })
+
+		if (da?.obj) return da?.obj as DiscordAccount
+		return Promise.reject(new Error(`Error fetching Discord account with id ${id}`))
 	}
 
 	
@@ -72,13 +85,22 @@ class DataHandler {
 	}:{
 		cache: cacheNames, key: string, db_obj: any} & getCachedObjectParams<T>
 	) => {
-		const cachedDb = this._cache.get(cache)!
-		if (cachedDb.has(key) && cachedDb.get(key)!.age < Date.now() - cacheDuration && !forceNoCache)
-			return cachedDb.get(key)!
 
-		cachedDb.delete(key);
-		const obj = await fn(key, db_obj)
-		const cachedObj = { age: Date.now(), obj: obj as T }
+		const cachedDb = this._cache.get(cache)!
+		const remainingCache = cachedDb.get(key)?.age ? (cacheDuration + cachedDb.get(key)!.age) - Date.now() : undefined
+
+		if (!cachedDb.has(key)) {
+			const obj = await fn(key, db_obj)
+			const cachedObj = { age: Date.now(), obj: obj as T }
+			cachedDb.set(key, cachedObj)
+		}
+
+		if ((remainingCache && remainingCache > 0) && !forceNoCache) return cachedDb.get(key)!
+		
+		const obj = cachedDb.get(key)!.obj
+		const updatedObj = await obj.update(key, db_obj);
+
+		const cachedObj = { age: Date.now(), obj: updatedObj as T }
 		cachedDb.set(key, cachedObj)
 
 		return cachedObj
@@ -86,5 +108,15 @@ class DataHandler {
 
 }
 
-export const DB_HANDLER = new DataHandler()
+
+let _DB_HANDLER: DataHandler | undefined;
+// Singleton pattern to ensure only one instance of DATABASE is created
+
+const getDbHandler = () => {
+	if (!_DB_HANDLER) _DB_HANDLER = new DataHandler();
+	return _DB_HANDLER;
+}
+
+
+export const DB_HANDLER = getDbHandler()
 

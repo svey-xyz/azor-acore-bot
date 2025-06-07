@@ -5,7 +5,6 @@ import { Command } from '@azor/command';
 import { DISCORD_CLIENT_ID, DISCORD_TOKEN } from '@azor.lib/conf.env';
 import { character } from '@azor/slash-commands/character/character';
 import { realm } from '@azor/slash-commands/realm/realm';
-import { tip } from '@azor/slash-commands/tip/tip';
 
 
 
@@ -14,8 +13,7 @@ export function deployCommands(client: any): Array<JSON> {
 
 	const COMMANDS: Array<Command> = [
 		character,
-		realm,
-		tip
+		realm
 	// Add other commands here as needed
 	]
 

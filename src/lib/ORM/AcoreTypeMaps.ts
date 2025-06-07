@@ -2,7 +2,7 @@
 // Mappings for Human-Readable Values
 // ========================
 
-const ZONE_MAP = {
+export const ZONE_MAP = {
 	0: "Unknown Zone",
 	1: "Dun Morogh ",
 	2: "Longshore ",
@@ -2313,7 +2313,7 @@ const ZONE_MAP = {
 	4987: "The Ruby Sanctum "
 } as const;
 
-const CLASS_MAP = {
+export const CLASS_MAP = {
 	0: "Unknown Class",
 	1: "Warrior",
 	2: "Paladin",
@@ -2327,7 +2327,7 @@ const CLASS_MAP = {
 	11: "Druid"
 } as const;
 
-const RACE_MAP = {
+export const RACE_MAP = {
 	0: "Unknown Race",
 	1: "Human",
 	2: "Orc",
@@ -2341,7 +2341,7 @@ const RACE_MAP = {
 	11: "Draenei"
 } as const;
 
-const GENDER_MAP = {
+export const GENDER_MAP = {
 	0: "Male",
 	1: "Female",
 	2: "Unknown Gender"

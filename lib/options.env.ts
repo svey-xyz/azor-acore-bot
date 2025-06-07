@@ -1,17 +1,17 @@
 import { assertValue } from "@azor.lib/assertValue";
 
-export const TIP_ITEM_ID = assertValue(
+export const GIFT_ITEM_ENTRY = assertValue(
 	parseInt(process.env.TIP_ITEM_ID || '') || 11966, // Default item ID for tips - Small Sack of Coins
-	'Missing environment variable: TIP_ITEM_ID'
+	'Missing environment variable: GIFT_ITEM_ENTRY'
 )
 
-export const TIP_LEVEL_REQUIREMENT = assertValue(
-	process.env.TIP_LEVEL_REQUIREMENT || 10, // Default level requirement for tipping
-	'Missing environment variable: TIP_LEVEL_REQUIREMENT'
+export const GIFT_LEVEL_REQUIREMENT = assertValue(
+	process.env.GIFT_LEVEL_REQUIREMENT || 10, // Default level requirement for tipping
+	'Missing environment variable: GIFT_LEVEL_REQUIREMENT'
 )
-export const TIP_COOLDOWN = assertValue(
-	parseInt(process.env.TIP_COOLDOWN || '') || 60, // Default cooldown in seconds for tipping
-	'Missing environment variable: TIP_COOLDOWN'
+export const GIFT_COOLDOWN = assertValue(
+	parseInt(process.env.GIFT_COOLDOWN || '') || 86400000, // 1 Day in milliseconds as default
+	'Missing environment variable: GIFT_COOLDOWN'
 );
 
 export const ANNOUNCE_COMMANDS_GLOBALLY = assertValue(

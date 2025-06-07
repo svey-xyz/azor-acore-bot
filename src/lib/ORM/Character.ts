@@ -1,38 +1,26 @@
 import { getDbClient } from "@azor/lib/db";
-import { CLASS_TYPE, GENDER_TYPE, RACE_TYPE, ZONE_TYPE, AcoreTypeMaps } from "@azor.ORM/AcoreTypeMaps";
+import { CLASS_TYPE, GENDER_TYPE, RACE_TYPE, ZONE_TYPE, AcoreTypeMaps, CLASS_MAP, RACE_MAP, GENDER_MAP } from "@azor.ORM/AcoreTypeMaps";
 import { QUERIES } from "server/queries";
 import { ORMObject } from "@azor/lib/ORM/ORMObject";
 
 export class Character extends ORMObject<_character> {
-	private _name: string;
-	private _accountId: number;
-	private _online: boolean;
+	private _name: string = '';
+	private _accountId: number = 0;
+	private _online: boolean = false;
 	private _mapId?: number;
 	private _zone?: ZONE_TYPE;
-	private _class: CLASS_TYPE;
-	private _race: RACE_TYPE;
-	private _gender: GENDER_TYPE;
-	private _level: number;
-	private _lastTip?: number; // Timestamp of the last time the character was updated
+	private _class: CLASS_TYPE = CLASS_MAP[0];
+	private _race: RACE_TYPE = RACE_MAP[0];
+	private _gender: GENDER_TYPE = GENDER_MAP[2];
+	private _level: number = 0;
 	private _guild?: any | undefined; //TODO: Define GuildInfo type and use it here
 
 	constructor({ key, db_obj }: { key: string, db_obj:_character}) {
 		super({ key, db_obj });
-		// Assign properties from the database character
-		this._name = db_obj.name;
-		this._accountId = db_obj.account; // TODO: Fetch account info
-		this._online = db_obj.online == 1;
-		this._mapId = db_obj.map || undefined; // Use mapId if it exists, otherwise undefined
-		// If zone exists, map it to a zone name, otherwise set to undefined
-		this._zone = db_obj.zone ? AcoreTypeMaps.zoneName(db_obj.zone) : undefined;
-		this._class = AcoreTypeMaps.className(db_obj.class);
-		this._race = AcoreTypeMaps.raceName(db_obj.race);
-		this._gender = AcoreTypeMaps.genderName(db_obj.gender);
-		this._level = db_obj.level;
-		// this._guild = db_character.gui // TODO: Fetch guild info
+		this.update(key, db_obj);
 	}
 
-	public static override createFromKey = async (key: string, db_obj?: _character) => {
+	public static override create = async (key: string, db_obj?: _character) => {
 		if (db_obj) return new Character({ key, db_obj });
 
 		const db = getDbClient()
@@ -43,7 +31,33 @@ export class Character extends ORMObject<_character> {
 		return new Character({ key, db_obj: databaseCharacters[0] });
 	}
 
-	public set lastTip(time: number | undefined) { this._lastTip = time;}
+	public async update(key: string, db_obj?: _character) {
+		let db_obj_to_use = db_obj;
+
+		if (!db_obj_to_use) {
+			const db = getDbClient();
+			db_obj_to_use = (await db.query[QUERIES.GET_CHARACTER_BY_NAME]({ username: key }))[0];
+		}
+
+		const DB_OBJ = db_obj_to_use as _character;
+		if (!DB_OBJ) throw new Error(`Error fetching character with name: ${key}.`);
+
+		this._name = DB_OBJ.name;
+		this._accountId = DB_OBJ.account; // TODO: Fetch account info
+		this._online = DB_OBJ.online == 1;
+		this._mapId = DB_OBJ.map || undefined; // Use mapId if it exists, otherwise undefined
+		// If zone exists, map it to a zone name, otherwise set to undefined
+		this._zone = DB_OBJ.zone ? AcoreTypeMaps.zoneName(DB_OBJ.zone) : undefined;
+		this._class = AcoreTypeMaps.className(DB_OBJ.class);
+		this._race = AcoreTypeMaps.raceName(DB_OBJ.race);
+		this._gender = AcoreTypeMaps.genderName(DB_OBJ.gender);
+		this._level = DB_OBJ.level;
+		// this._guild = db_character.gui // TODO: Fetch guild info
+		
+		super.update(key, DB_OBJ);
+		return this;
+	}
+
 
 	public get name(): string { return this._name; }
 	public get accountId(): number { return this._accountId; }
@@ -54,6 +68,5 @@ export class Character extends ORMObject<_character> {
 	public get race(): RACE_TYPE { return this._race; }
 	public get gender(): GENDER_TYPE { return this._gender; }
 	public get level(): number { return this._level; }
-	public get lastTip(): number | undefined { return this._lastTip; }
 	public get guild(): any | undefined { return this._guild;}
 }
