@@ -1,11 +1,11 @@
-import { CommandInteraction } from "discord.js";
+import { ChatInputCommandInteraction, CommandInteraction } from "discord.js";
 import { SubCommand } from "@azor/subCommand";
 import { formatter, ORM_OBJECTS } from "@azor/lib/formatter";
 // import { Server } from "soap";
 import { DB_HANDLER } from "@azor/lib/db";
 
 export const pop: SubCommand = {
-	async execute(commandInteraction: CommandInteraction) {
+	async execute(commandInteraction: ChatInputCommandInteraction) {
 		// const server = Server.getInstance();
 		// const username = commandInteraction.options.getString("username") || '';
 		const realm = DB_HANDLER.getRealm();
