@@ -4,7 +4,7 @@ An [AzerothCore](https://www.azerothcore.org) integrated [Discord](https://disco
 **Work in progress!** More updates coming soon.
 
 ## Introduction
-**Azor** connects to your AzerothCore server and your Discord server to add some fun and useful [slash commands](https://support-apps.discord.com/hc/en-us/articles/26501837786775-Slash-Commands-FAQ) for your Discord users.
+**Azor** connects to your [AzerothCore](https://www.azerothcore.org) server and your [Discord](https://discord.com) server to add some fun and useful [slash commands](https://support-apps.discord.com/hc/en-us/articles/26501837786775-Slash-Commands-FAQ) for your Discord users.
 
 ## Setup
 Designed to run as a [Docker container](https://www.docker.com/resources/what-container/) on the same network as your [AzerothCore](https://www.azerothcore.org) server. Currently, the docker build has not been fully setup, instructions for install will come soon.
