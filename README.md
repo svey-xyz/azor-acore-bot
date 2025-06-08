@@ -64,11 +64,11 @@ Character commands to interact and get information.
 ```
 
 ## Tech
-**Full type safety** | Written in Typescript and making use of full end to end type safety
+**Type safety** | Written in [Typescript](https://www.typescriptlang.org/) and making use of full end-to-end type safety.
 
-**Handrolled ORM** | Nothing screams custom built quite like a handrolled ORM. This project required an interesting blend of data from AzerothCore, Discord, and custom data types that I felt would be best handled by a custom solution.
+**Hand-rolled ORM** | Nothing screams custom built quite like a hand-rolled ORM. This project required an interesting blend of data from [AzerothCore](https://www.azerothcore.org), [Discord](https://discord.com), and custom data types that I felt would be best handled by a custom solution.
 
-**Data Safety** | This bot connects directly to your MySQL AzerothCore database, however, it is recommended that you create a read-only user for the bot. All commands that write data do so through SOAP.
+**Data Safety** | This bot connects directly to your MySQL [AzerothCore](https://www.azerothcore.org) database, however, it is recommended that you create a read-only user for the bot. All commands that write data do so through [SOAP](https://www.azerothcore.org/wiki/remote-access#soap).
 
 ## Roadmap
 **Features**
