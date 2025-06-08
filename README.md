@@ -6,6 +6,19 @@ An [AzerothCore](https://www.azerothcore.org) integrated [Discord](https://disco
 ## Introduction
 **Azor** connects to your [AzerothCore](https://www.azerothcore.org) server and your [Discord](https://discord.com) server to add some fun and useful [slash commands](https://support-apps.discord.com/hc/en-us/articles/26501837786775-Slash-Commands-FAQ) for your Discord users.
 
+### Features
+**Characters** | Interact with your characters by fetching data or sending gifts.
+
+**Realm** | Get live information about online players and realm status.
+
+**Ease of use** | **Azor** makes use of standard [Discord slash commands](https://support-apps.discord.com/hc/en-us/articles/26501837786775-Slash-Commands-FAQ) all of your users will be at home operating this bot.
+
+**Data Safety** | Your data stays on your network, no write permissions required.
+
+**Caching** | No need to worry about command spam flooding your database calls, **Azor** intelligently caches data and updates stale objects only when needed.
+
+**Versatile Deployment** | Easily deploy to docker, or run as a native [node application](https://nodejs.org/en) the choice is up to you.
+
 ## Setup
 Designed to run as a [Docker container](https://www.docker.com/resources/what-container/) on the same network as your [AzerothCore](https://www.azerothcore.org) server. Currently, the docker build has not been fully setup, instructions for install will come soon.
 
@@ -49,6 +62,13 @@ Character commands to interact and get information.
 ```discord
 	/realm pop
 ```
+
+## Tech
+**Full type safety** | Written in Typescript and making use of full end to end type safety
+
+**Handrolled ORM** | Nothing screams custom built quite like a handrolled ORM. This project required an interesting blend of data from AzerothCore, Discord, and custom data types that I felt would be best handled by a custom solution.
+
+**Data Safety** | This bot connects directly to your MySQL AzerothCore database, however, it is recommended that you create a read-only user for the bot. All commands that write data do so through SOAP.
 
 ## Roadmap
 **Features**
