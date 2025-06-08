@@ -1,12 +1,12 @@
 import { assertValue } from "@azor.lib/assertValue";
 
 export const GIFT_ITEM_ENTRY = assertValue(
-	parseInt(process.env.TIP_ITEM_ID || '') || 11966, // Default item ID for tips - Small Sack of Coins
+	parseInt(process.env.TIP_ITEM_ID || '') || 11966, // Default item ID for gifts - Small Sack of Coins
 	'Missing environment variable: GIFT_ITEM_ENTRY'
 )
 
 export const GIFT_LEVEL_REQUIREMENT = assertValue(
-	process.env.GIFT_LEVEL_REQUIREMENT || 10, // Default level requirement for tipping
+	process.env.GIFT_LEVEL_REQUIREMENT || 10, // Default level requirement for gifting
 	'Missing environment variable: GIFT_LEVEL_REQUIREMENT'
 )
 export const GIFT_COOLDOWN = assertValue(
