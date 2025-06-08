@@ -1,6 +1,8 @@
 # Azor
 An [AzerothCore](https://www.azerothcore.org) integrated [Discord](https://discord.com) bot - **by [svey](https://github.com/svey-xyz)**
 
+**Work in progress!** More updates coming soon.
+
 ## Introduction
 **Azor** connects to your AzerothCore server and your Discord server to add some fun and useful [slash commands](https://support-apps.discord.com/hc/en-us/articles/26501837786775-Slash-Commands-FAQ) for your Discord users.
 
@@ -52,6 +54,7 @@ Character commands to interact and get information.
 **Features**
  - Restrict commands by role
  - Disable/Enable in game announcements globally and to individuals per command - *coming soon*
+ - Currently I use a modified version of [0xCiBeR](https://github.com/0xCiBeR)'s [Acore_DiscordNotifier](https://github.com/0xCiBeR/Acore_DiscordNotifier) on my server to add some additional functionality. My script messages on login/logout, quest complete, level up, etc. I am considering including the modified script in with this bot as an optional addon, or alternatively building an event listener natively into the bot.
 
 **Commands**
  - *Gift*, adding an option for discord users to select between different pre-configured gifts.
@@ -59,8 +62,12 @@ Character commands to interact and get information.
  - *Looking for additional command suggestions*
 
 **Integrations**
+ - Linking Discord id to Azeroth account in server database- this will hopefully open paths for new and interesting commands that make use of knowing which characters belong to the issuer of a Discord command.
 
 ## Notes
  - This tool was designed and built around my very low pop server. If some commands (especially realm commands) return poorly formatted responses please [submit an issue](/issues).
 
 ## Credits
+ - built by [svey](https://github.com/svey-xyz).
+ - Big thanks to the folks over at [AzerothCore](https://www.azerothcore.org/) for all of their incredible work.
+ - Thanks to  [0xCiBeR](https://github.com/0xCiBeR) for creating [Acore_DiscordNotifier](https://github.com/0xCiBeR/Acore_DiscordNotifier), this was the initial inspiration and jumping point for this project.
