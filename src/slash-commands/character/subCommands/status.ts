@@ -1,4 +1,4 @@
-import { ChatInputCommandInteraction, CommandInteraction } from "discord.js";
+import { ChatInputCommandInteraction } from "discord.js";
 import { SubCommand } from "@azor/subCommand";
 import { formatter, ORM_OBJECTS } from "@azor/lib/formatter";
 import { DB_HANDLER } from "@azor/lib/db";

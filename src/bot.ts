@@ -12,8 +12,13 @@ const COMMANDS: Array<Command> = [
 const token: string = DISCORD_TOKEN;
 
 const client = new Client({
-	intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildExpressions, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildMessageReactions, GatewayIntentBits.GuildPresences],
-	// partials: ["MESSAGE", "CHANNEL", "REACTION"]
+	intents: [
+		GatewayIntentBits.Guilds,
+		GatewayIntentBits.GuildExpressions,
+		GatewayIntentBits.GuildMembers,
+		GatewayIntentBits.GuildMessageReactions,
+		GatewayIntentBits.GuildPresences
+	],
 });
 
 client.commands = new Collection();

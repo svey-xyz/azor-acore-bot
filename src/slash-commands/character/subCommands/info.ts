@@ -1,15 +1,11 @@
-import { CommandInteraction, ApplicationCommandSubCommand, Interaction, CommandInteractionOptionResolver, ChatInputCommandInteraction } from "discord.js";
+import { ChatInputCommandInteraction } from "discord.js";
 import { DB_HANDLER } from "@azor/lib/db";
-import { SubCommand } from "@azor/subCommand";
 import { formatter, ORM_OBJECTS } from "@azor/lib/formatter";
 
 export const info = {
 	async execute(commandInteraction: ChatInputCommandInteraction<undefined>) {
-		console.log('commandtype: ', typeof commandInteraction);
-		console.log('command: ', commandInteraction);
-		
 		const username = commandInteraction.options.getString("username", true);
-		// return
+		
 		try {
 			const character = await DB_HANDLER.getCharacter({ username })
 			

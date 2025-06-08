@@ -1,4 +1,4 @@
-import { ChatInputCommandInteraction, CommandInteraction } from "discord.js";
+import { ChatInputCommandInteraction } from "discord.js";
 
 import { Command } from "@azor/command";
 import { commandData } from "@azor.slash-commands/character/commandData"

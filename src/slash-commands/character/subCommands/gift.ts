@@ -1,13 +1,10 @@
-import { ButtonStyle, CommandInteraction, Interaction, ActionRowBuilder, ButtonBuilder, SlashCommandBuilder, ChatInputCommandInteraction, ActionRow, MessageActionRowComponent, MessageComponent, MessageComponentType, ComponentType, MessageActionRowComponentBuilder } from "discord.js";
-import { Command } from "@azor/command";
+import { ButtonStyle, Interaction, ActionRowBuilder, ButtonBuilder, SlashCommandBuilder, ChatInputCommandInteraction, MessageActionRowComponentBuilder } from "discord.js";
 import { executeSoapCommand, SOAP_COMMANDS } from "@azor/lib/executeSoapCommand";
 import { GIFT_COOLDOWN, GIFT_ITEM_ENTRY } from "@azor.lib/options.env";
 import { DB_HANDLER } from "@azor/lib/db";
-// import { ButtonStyle, Message } from "discord-api-types/v10";
-// import { getItemByEntry } from "@azor/lib/ORM/Item";
-// MessageComponentInteraction
+import { Command } from "@azor/command";
 
-export const gift = {
+export const gift: Command = {
 	cmdData: new SlashCommandBuilder()
 		.setName('gift')
 		.setDescription(`Gift a character.`)
@@ -63,16 +60,11 @@ export const gift = {
 				
 			});
 
-			// const los = response.
-
-			// console.log('Response:', response);
-			// response.components?[0
 			const collectorFilter = (i: Interaction) => i.user.id === commandInteraction.user.id;
 			try {
 				const confirmation = await response.resource?.message?.awaitMessageComponent({ filter: collectorFilter, time: 60_000 });
 
 				if (confirmation?.customId === 'confirm') {
-					// await commandInteraction.guild?.members.ban(target);
 					executeSoapCommand[SOAP_COMMANDS.TIP_CHARACTER]({ args: { player_name: username } })
 						.catch((error) => {
 							console.error(`Error gifting character ${username}:`, error);

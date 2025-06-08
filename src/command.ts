@@ -1,9 +1,8 @@
-import { SelectMenuInteraction, CommandInteraction, ButtonInteraction } from "discord.js";
+import { ChatInputCommandInteraction, ButtonInteraction, StringSelectMenuInteraction, SlashCommandBuilder, SlashCommandSubcommandsOnlyBuilder, SlashCommandOptionsOnlyBuilder } from "discord.js";
 
 export interface Command {
-	cmdData: any,
-	execute(interaction: CommandInteraction): void,
-	select?(interaction: SelectMenuInteraction): void
+	cmdData: SlashCommandBuilder | SlashCommandSubcommandsOnlyBuilder | SlashCommandOptionsOnlyBuilder,
+	execute(interaction: ChatInputCommandInteraction): void,
+	select?(interaction: StringSelectMenuInteraction): void
 	button?(interaction: ButtonInteraction): void
-
 }

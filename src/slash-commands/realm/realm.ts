@@ -5,11 +5,10 @@ import { commandData } from "@azor.slash-commands/realm/commandData"
 import { online } from "@azor.slash-commands/realm/subCommands/online";
 import { pop } from "@azor.slash-commands/realm/subCommands/pop";
 
-export const realm = {
+export const realm: Command = {
 	cmdData: commandData,
 	async execute(commandInteraction: ChatInputCommandInteraction) {
-		// console.log('Realm command executed', commandInteraction);
-		switch ('dasdasd' as any) {
+		switch (commandInteraction.options.getSubcommand()) {
 			case ('status'):
 				// status.execute(commandInteraction);
 				break;

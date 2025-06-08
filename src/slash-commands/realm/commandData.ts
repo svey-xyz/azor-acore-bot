@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, SlashCommandStringOption, SlashCommandSubcommandBuilder } from 'discord.js';
+import { SlashCommandBuilder, SlashCommandSubcommandBuilder } from 'discord.js';
 
 export const commandData = new SlashCommandBuilder()
 	.setName('realm')
