@@ -30,8 +30,8 @@ type cachedObject<T> = {
 
 
 class DataHandler {
-	private _realm = new Realm()
-	private _defaultCacheDuration: number = 1000 * 60 * 5; // 5min default cache
+	private _realm
+	private _defaultCacheDuration: number = 1000 * 60 * 1; // 1min default cache
 	private _characters = new Map<string, cachedObject<Character>>()
 	private _items = new Map<string, cachedObject<Item>>()
 	private _discordAccounts = new Map<string, cachedObject<DiscordAccount>>()
@@ -39,6 +39,7 @@ class DataHandler {
 	private _cache = new Map<cacheNames, Map<string, cachedObject<ORMObject<{}>>>>()
 
 	constructor() {
+		this._realm = new Realm();
 		this._cache.set('characters', this._characters)
 		this._cache.set('items', this._items)
 		this._cache.set('discordAccounts', this._discordAccounts)
@@ -78,7 +79,10 @@ class DataHandler {
 		return Promise.reject(new Error(`Error fetching Discord account with id ${id}`))
 	}
 
-	
+	public getRealm(): Realm {
+		return this._realm;
+	}
+
 	getCachedData = async <T extends ORMObject<{}>>
 	({
 		cache, key, fn, db_obj, cacheDuration = 0, forceNoCache

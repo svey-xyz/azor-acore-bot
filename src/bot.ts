@@ -1,4 +1,4 @@
-import { Client, Intents } from "discord.js";
+import { Client, Events, GatewayIntentBits } from "discord.js";
 import { ready } from "@azor/listeners/ready";
 import { interactionCreate } from "@azor/listeners/interactionCreate";
 import { DISCORD_TOKEN } from "@azor.lib/conf.env";
@@ -6,12 +6,15 @@ import { DISCORD_TOKEN } from "@azor.lib/conf.env";
 const token: string = DISCORD_TOKEN;
 
 const client = new Client({
-	intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_EMOJIS_AND_STICKERS, Intents.FLAGS.GUILD_MEMBERS, Intents.FLAGS.GUILD_MESSAGE_REACTIONS, Intents.FLAGS.GUILD_PRESENCES],
-	partials: ["MESSAGE", "CHANNEL", "REACTION"]
+	intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildExpressions, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildMessageReactions, GatewayIntentBits.GuildPresences],
+	// partials: ["MESSAGE", "CHANNEL", "REACTION"]
 });
 
-ready(client);
-interactionCreate(client);
+client.once(Events.ClientReady, readyClient => {
+	console.log(`Ready! Logged in as ${readyClient.user.tag}`);
+	ready(client);
+	interactionCreate(client);
+});
 
 client.login(token)
 

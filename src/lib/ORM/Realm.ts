@@ -4,11 +4,21 @@ import { Character } from "@azor.ORM/Character";
 
 export class Realm  {
 	private _onlineCharacters: Array<Character> = [];
+	private _pop: number = 0;
 
 	public constructor() {
+		this.updateOnlineCharacters().then((characters) => {
+			this._onlineCharacters = characters;
+			this._pop = characters.length;
+		}).catch((err) => {
+			console.error("Error updating online characters:", err);
+			this._onlineCharacters = [];
+			this._pop = 0;
+		});
+		// return this
 	}
 
-	private updateOnlineCharacters = async () => {
+	private async updateOnlineCharacters() {
 		const db = getDbClient()
 
 		const onlineCharacters = await db.query[QUERIES.GET_ONLINE_CHARACTERS]({});
@@ -26,16 +36,18 @@ export class Realm  {
 		return this._onlineCharacters;
 	}
 
+	private async updatePop() {
+		const onlineCharacters = await this.updateOnlineCharacters();
+		this._pop = onlineCharacters.length;
+		return this._pop;
+	}
+
 	public get onlineCharacters(): Promise<Array<Character>> {
 		return this.updateOnlineCharacters();
+
 	}
-}
 
-const _REALM = new Realm();
-export const getOnlineCharacters = async (): Promise<Array<Character>> => {
-	return _REALM.onlineCharacters;
-}
-
-export const getPop = async () => {
-	return (await (_REALM.onlineCharacters)).length;
+	public get pop(): Promise<number> {
+		return this.updatePop();
+	}
 }

@@ -1,6 +1,5 @@
-import { REST } from '@discordjs/rest'
 import { Routes } from 'discord-api-types/v9';
-import { Collection } from 'discord.js';
+import { Collection, REST } from 'discord.js';
 import { Command } from '@azor/command';
 import { DISCORD_CLIENT_ID, DISCORD_TOKEN } from '@azor.lib/conf.env';
 import { character } from '@azor/slash-commands/character/character';

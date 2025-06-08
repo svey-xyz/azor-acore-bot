@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, SlashCommandStringOption, SlashCommandSubcommandBuilder } from '@discordjs/builders';
+import { SlashCommandBuilder, SlashCommandStringOption, SlashCommandSubcommandBuilder } from 'discord.js';
 
 export const commandData = new SlashCommandBuilder()
 	.setName('character')

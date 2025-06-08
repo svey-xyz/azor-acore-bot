@@ -11,22 +11,22 @@ import { gift } from "@azor.slash-commands/character/subCommands/gift";
 export const character: Command = {
 	cmdData: commandData,
 	async execute(commandInteraction: CommandInteraction) {
-		switch (commandInteraction.options.getSubcommand()) {
-			case ('status'):
-				status.execute(commandInteraction);
-				break;
-			case ('info'):
-				info.execute(commandInteraction)
-				break;
-			case ('location'):
-				location.execute(commandInteraction)
-				break;
-			case ('gift'):
-				gift.execute(commandInteraction)
-				break;
-			default:
-				commandInteraction.reply({ content: `No command found!`, ephemeral: true })
-				break;
-		}
+		// switch (commandInteraction.options.getSubcommand()) {
+		// 	case ('status'):
+		// 		status.execute(commandInteraction);
+		// 		break;
+		// 	case ('info'):
+		// 		info.execute(commandInteraction)
+		// 		break;
+		// 	case ('location'):
+		// 		location.execute(commandInteraction)
+		// 		break;
+		// 	case ('gift'):
+		// 		gift.execute(commandInteraction)
+		// 		break;
+		// 	default:
+		// 		commandInteraction.reply({ content: `No command found!`, ephemeral: true })
+		// 		break;
+		// }
 	},
 };
