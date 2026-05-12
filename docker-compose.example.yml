@@ -1,0 +1,39 @@
+# Example compose file. Copy to docker-compose.yml and customize.
+#
+#   cp docker-compose.example.yml docker-compose.yml
+#   cp .env.example .env             # then fill in values
+#   docker compose up -d
+#
+# Drop the resulting container onto the same Docker network as your
+# AzerothCore worldserver/authserver/MySQL stack so SOAP_ENDPOINT and
+# MYSQL_ENDPOINT can be set to service names.
+
+services:
+  azor:
+    # Pull from Docker Hub. Override the tag with AZOR_TAG, e.g.
+    #   AZOR_TAG=1.2.3 docker compose up -d
+    image: svey/azor-acore-bot:${AZOR_TAG:-latest}
+    # If you're hacking on the source, swap `image:` for `build: .` instead.
+    container_name: azor-acore-bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    # Sane resource defaults — tune to taste.
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    # Attach to the same network as your AzerothCore stack so SOAP_ENDPOINT
+    # and MYSQL_ENDPOINT can resolve container/service names. Replace
+    # `acore_network` with whatever your AzerothCore compose uses.
+    networks:
+      - acore_network
+
+networks:
+  acore_network:
+    external: true
