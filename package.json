@@ -27,18 +27,18 @@
   "homepage": "https://github.com/svey-xyz/azor-acore-bot#readme",
   "dependencies": {
     "@types/mysql": "^2.15.27",
-    "discord.js": "^14.19.3",
-    "dotenv": "^16.0.1",
-    "dotenv-expand": "^8.0.3",
-    "mysql2": "^3.14.1",
-    "pretty-ms": "^9.2.0",
-    "soap": "^1.1.12"
+    "discord.js": "^14.26.4",
+    "dotenv": "^17.4.2",
+    "dotenv-expand": "^13.0.0",
+    "mysql2": "^3.22.3",
+    "pretty-ms": "^9.3.0",
+    "soap": "^1.9.1"
   },
   "devDependencies": {
-    "@types/node": "^22.15.30",
+    "@types/node": "^25.7.0",
     "ts-node": "^10.9.2",
     "tsc": "^2.0.4",
     "tsconfig-paths": "^4.2.0",
-    "typescript": "^5.8.3"
+    "typescript": "^6.0.3"
   }
 }
