@@ -1,0 +1,37 @@
+########################################
+# mod-azor-api configuration
+#
+# This file ships defaults for the AzorApi module. Most runtime values live in
+# the `mod_azor_api_config` table (acore_world) — edit them there and run
+# `.reload config` in-game to pick them up without restarting the worldserver.
+# Anything that genuinely requires a redeploy lives here.
+########################################
+
+[worldserver]
+
+###################################################################################################
+# AzorApi.Enable
+#   Master switch for the module. Set to 0 to compile-in the code without registering any
+#   CommandScripts or WorldScripts. Useful for staged rollouts.
+#
+# Default: 1
+###################################################################################################
+AzorApi.Enable = 1
+
+###################################################################################################
+# AzorApi.Log.Commands
+#   When 1, every `.azor api ...` command logged at INFO level with caller security level
+#   and arguments. Recommended on during Stage 2/3 ramp-up; turn off later if log volume is an issue.
+#
+# Default: 1
+###################################################################################################
+AzorApi.Log.Commands = 1
+
+###################################################################################################
+# AzorApi.Build
+#   Optional human-readable build identifier returned by `.azor api version`. CI should overwrite
+#   this with the git short SHA on each worldserver build. Empty falls back to "dev".
+#
+# Default: ""
+###################################################################################################
+AzorApi.Build = ""
