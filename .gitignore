@@ -1,25 +1,28 @@
-## Ignore build files, and cache files
+## Build artifacts
 dist/
+*.tsbuildinfo
 
-## Ignore node dependencies
+## Dependencies
 node_modules/
 package-lock.json
 
-## Ignore MacOS files.
+## macOS metadata
 .DS_Store
 ._*
 ._.*
 
-.env.development
+## Env files (any depth)
+.env
+.env.*
 *.env
 *.env.local
 *.env.production
+*.env.development
 
+## Local compose overrides (any depth)
 docker-compose.yml
+docker-compose.*.yml
+!docker-compose.example.yml
 
-## Never commit user-supplied SSH keys placed in the /config volume.
-config/ssh_key
-config/ssh_key.pub
-config/*.pem
-config/*.key
-config/id_*
+## Migration helper — delete after the monorepo restructure is committed.
+migrate-monorepo.sh

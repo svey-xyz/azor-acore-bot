@@ -1,7 +1,8 @@
 {
-  "name": "azor-acore-bot",
+  "name": "@azor/bot",
   "version": "0.1.1",
-  "description": "Integrated Discord bot for Azerothcore.",
+  "private": true,
+  "description": "Integrated Discord bot for AzerothCore.",
   "keywords": [
     "discord",
     "bot",
@@ -11,13 +12,14 @@
   ],
   "main": "dist/bot.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
     "start": "NODE_ENV=development ts-node src/bot.ts",
-    "build": "NODE_ENV=production tsc"
+    "build": "NODE_ENV=production tsc",
+    "typecheck": "tsc --noEmit"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/svey-xyz/azor-acore-bot.git"
+    "url": "git+https://github.com/svey-xyz/azor-acore-bot.git",
+    "directory": "apps/discord-bot"
   },
   "author": "svey",
   "license": "ISC",
@@ -39,8 +41,6 @@
     "@types/node": "^25.7.0",
     "@types/ssh2": "^1.15.5",
     "ts-node": "^10.9.2",
-    "tsc": "^2.0.4",
-    "tsconfig-paths": "^4.2.0",
-    "typescript": "^6.0.3"
+    "tsconfig-paths": "^4.2.0"
   }
 }

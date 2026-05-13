@@ -1,6 +1,8 @@
-# CLAUDE.md — azor-acore-bot
+# CLAUDE.md — @azor/bot
 
 Discord bot that bridges an [AzerothCore](https://www.azerothcore.org) WoW private server with a Discord server via slash commands.
+
+> Part of the AZOR monorepo (`/CLAUDE.md` at the repo root). This file documents the bot package only. Shared types live in `packages/shared`; the AzerothCore C++ module lives in `packages/server-module`.
 
 ## Architecture
 
@@ -49,13 +51,21 @@ lib/
 
 ## Commands
 
+Run from the repo root (preferred) or from `apps/discord-bot/` directly.
+
 ```bash
-bun install          # install deps
-bun run start        # dev: ts-node with tsconfig-paths
-bun run build        # prod: tsc → dist/
+# from repo root
+bun install              # install workspace deps (hoisted)
+bun run bot              # dev: ts-node with tsconfig-paths
+bun run bot:build        # prod: tsc → apps/discord-bot/dist/
+
+# from apps/discord-bot/
+bun run start            # dev
+bun run build            # prod build
+bun run typecheck        # tsc --noEmit
 ```
 
-> The `tsc` npm package in devDeps is a harmless shim — the real compiler is `typescript`. Use `./node_modules/typescript/bin/tsc` or `bunx tsc` directly.
+> `typescript` lives at the root workspace; `ts-node` and `tsconfig-paths` are bot-local. The `tsc` shim that used to be in devDeps was removed in the monorepo migration — use `bunx tsc` if you need the binary outside an npm script.
 
 ## Path Aliases
 
@@ -131,7 +141,7 @@ Note: `baseUrl` is deprecated in TS 6. `"ignoreDeprecations": "6.0"` is set in `
 
 ## Deployment
 
-Designed to run as a Docker container on the same network as AzerothCore. The Dockerfile is a multi-stage build (compile → strip devDeps → distroless). The Dockerfile currently uses `npm` — update to `bun` when moving to a newer base image.
+Designed to run as a Docker container on the same network as AzerothCore. The Dockerfile is multi-stage (deps → runtime), built from the **monorepo root** as context with `-f apps/discord-bot/Dockerfile`. Runtime uses Bun directly on `.ts` source — no compile step.
 
 Bot OAuth URL: `https://discord.com/api/oauth2/authorize?client_id=<DISCORD_CLIENT_ID>&permissions=581085722147905&scope=bot%20applications.commands`
 
@@ -140,5 +150,4 @@ Bot OAuth URL: `https://discord.com/api/oauth2/authorize?client_id=<DISCORD_CLIE
 - Role-based command restrictions not yet implemented (`commandPermissions.ts` has `adminOnly` helper ready)
 - `conf.env.ts` uses `require('dotenv')` (CJS-style) — migrate to `import 'dotenv/config'`
 - `baseUrl` in tsconfig is deprecated in TS 6; plan migration before TS 7
-- Docker build uses `node:alpine` and `npm`; migrate to `oven/bun` image
 - No test suite yet

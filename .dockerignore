@@ -1,0 +1,59 @@
+# Build context is the monorepo root. Trim everything the bot image doesn't
+# need so layer caching stays tight and secrets never get baked in.
+
+# Dependencies
+**/node_modules
+**/dist
+**/*.tsbuildinfo
+
+# VCS / editor / OS
+.git
+.gitignore
+.gitattributes
+.github
+.vscode
+.idea
+.DS_Store
+._*
+
+# Local env (any depth — these are mounted at runtime, never baked in)
+.env
+.env.*
+**/.env
+**/.env.*
+**/*.env
+**/*.env.local
+**/*.env.production
+**/*.env.development
+
+# Compose overrides (any depth; keep the example)
+**/docker-compose.yml
+**/docker-compose.*.yml
+!**/docker-compose.example.yml
+
+# Other Dockerfiles + ignore files in subtrees
+**/Dockerfile
+**/.dockerignore
+
+# Docs / markdown — not needed at runtime
+**/*.md
+docs/
+
+# Migration helper
+migrate-monorepo.sh
+
+# Log noise
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Secrets — never bake user-supplied keys into the image. The /config volume
+# is intended to be mounted at runtime; see apps/discord-bot/docker-compose.example.yml.
+apps/discord-bot/config/ssh_key
+apps/discord-bot/config/ssh_key.pub
+apps/discord-bot/config/*.pem
+apps/discord-bot/config/*.key
+apps/discord-bot/config/id_*
+
+# AzerothCore C++ module — not part of the bot image.
+packages/server-module/

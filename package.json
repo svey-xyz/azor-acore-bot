@@ -1,0 +1,26 @@
+{
+  "name": "azor",
+  "version": "0.0.0",
+  "private": true,
+  "description": "AZOR monorepo — Discord bot, AzerothCore server module, and shared TypeScript libraries.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/svey-xyz/azor-acore-bot.git"
+  },
+  "author": "svey",
+  "license": "ISC",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "bot": "bun --cwd apps/discord-bot run start",
+    "bot:build": "bun --cwd apps/discord-bot run build",
+    "build": "bun --filter '*' run build",
+    "typecheck": "bun --filter '*' run typecheck",
+    "clean": "rm -rf node_modules apps/*/node_modules packages/*/node_modules apps/*/dist packages/*/dist"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.3"
+  }
+}

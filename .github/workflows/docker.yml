@@ -65,6 +65,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
+          file: apps/discord-bot/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
@@ -79,7 +80,7 @@ jobs:
           sbom: true
 
       - name: Update Docker Hub description
-        # Keeps the Docker Hub overview in sync with docs/dockerhub-overview.md.
+        # Keeps the Docker Hub overview in sync with the bot's docs.
         if: github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
         uses: peter-evans/dockerhub-description@v4
         with:
@@ -87,4 +88,4 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
           repository: ${{ env.IMAGE_NAME }}
           short-description: ${{ github.event.repository.description }}
-          readme-filepath: ./docs/dockerhub-overview.md
+          readme-filepath: ./apps/discord-bot/docs/dockerhub-overview.md
