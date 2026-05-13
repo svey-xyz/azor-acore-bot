@@ -28,6 +28,13 @@ namespace AzorApi
         inline constexpr std::string_view Internal      = "internal";
         inline constexpr std::string_view Unimplemented = "unimplemented";
         inline constexpr std::string_view Disabled      = "disabled";
+
+        // Stage 3 — character interactions.
+        // `Cooldown` is returned by `character interact` when the per-(guid,type)
+        // cooldown from `mod_azor_api_config.<type>.cooldown_ms` hasn't elapsed.
+        // `MinLevel` is returned when the target is below `<type>.min_level`.
+        inline constexpr std::string_view Cooldown      = "cooldown";
+        inline constexpr std::string_view MinLevel      = "min_level";
     }
 }
 

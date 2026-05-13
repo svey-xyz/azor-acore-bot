@@ -12,9 +12,11 @@
 // transitive includes of <ScriptMgr.h> bleeding into unrelated TUs.
 void AddAzorApiCommandScript();
 void AddAzorApiWorldScript();
+void AddAzorApiPlayerScript();
 
 void AddAzorApiScripts()
 {
     AddAzorApiWorldScript();
     AddAzorApiCommandScript();
+    AddAzorApiPlayerScript();
 }

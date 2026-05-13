@@ -16,7 +16,9 @@
 AC_ADD_SCRIPT("${CMAKE_CURRENT_LIST_DIR}/src/AzorApi_loader.cpp")
 AC_ADD_SCRIPT("${CMAKE_CURRENT_LIST_DIR}/src/AzorApiConfig.cpp")
 AC_ADD_SCRIPT("${CMAKE_CURRENT_LIST_DIR}/src/AzorApiCharacter.cpp")
+AC_ADD_SCRIPT("${CMAKE_CURRENT_LIST_DIR}/src/AzorApiInteractions.cpp")
 AC_ADD_SCRIPT("${CMAKE_CURRENT_LIST_DIR}/src/AzorApiWorldScript.cpp")
+AC_ADD_SCRIPT("${CMAKE_CURRENT_LIST_DIR}/src/AzorApiPlayerScript.cpp")
 AC_ADD_SCRIPT("${CMAKE_CURRENT_LIST_DIR}/src/AzorApiCommandScript.cpp")
 
 AC_ADD_SCRIPT_LOADER("AzorApi" "${CMAKE_CURRENT_LIST_DIR}/src/AzorApi_loader.h")

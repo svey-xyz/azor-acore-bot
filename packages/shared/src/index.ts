@@ -57,6 +57,9 @@ export const AZOR_API_ERROR_CODES = {
 	internal: 'internal',
 	unimplemented: 'unimplemented',
 	disabled: 'disabled',
+	// Stage 3 — `character interact` failure modes.
+	cooldown: 'cooldown',
+	minLevel: 'min_level',
 } as const
 
 export type AzorApiErrorCode = (typeof AZOR_API_ERROR_CODES)[keyof typeof AZOR_API_ERROR_CODES]
@@ -120,6 +123,58 @@ export interface AzorApiCharacterLocationData {
 export interface AzorApiCharacterStatusData {
 	online: boolean
 	level: number
+}
+
+// ---------------------------------------------------------------------------
+// Response payload types — Stage 3 interactions
+// ---------------------------------------------------------------------------
+
+/** Returned by `.azor api character interact`. */
+export interface AzorApiCharacterInteractData {
+	guid: number
+	name: string
+	interactionType: AzorApiInteractionType
+	sourceType: AzorApiSourceType
+	sourceId: string
+	/** Epoch ms when the interaction was recorded (matches `Date.now()`). */
+	occurredAt: number
+	/** Module-side cooldown for this interaction type, in ms (0 = no cooldown). */
+	cooldownMs: number
+}
+
+/** Returned by `.azor api character cooldown`. */
+export interface AzorApiCharacterCooldownData {
+	guid: number
+	interactionType: AzorApiInteractionType
+	/** Epoch ms of the most recent occurrence; 0 if never. */
+	lastAt: number
+	cooldownMs: number
+	/** 0 when no cooldown is active. */
+	remainingMs: number
+}
+
+export interface AzorApiCharacterHistoryRow {
+	id: number
+	interactionType: AzorApiInteractionType
+	sourceType: AzorApiSourceType
+	sourceId: string
+	occurredAt: number
+	/**
+	 * Stored payload as a raw JSON string (or null). The server-side writer
+	 * surfaces this verbatim rather than embedding — clients re-parse with
+	 * `JSON.parse(row.payloadJson!)` if they need the structure.
+	 */
+	payloadJson: string | null
+}
+
+export interface AzorApiCharacterHistoryData {
+	guid: number
+	/** The applied limit (after server-side clamping). */
+	limit: number
+	/** The interaction-type filter applied, or null for unfiltered. */
+	interactionType: AzorApiInteractionType | null
+	/** Newest-first. */
+	interactions: AzorApiCharacterHistoryRow[]
 }
 
 // ---------------------------------------------------------------------------

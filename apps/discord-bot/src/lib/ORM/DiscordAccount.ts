@@ -1,11 +1,13 @@
 import { ORMObject } from "@azor/lib/ORM/ORMObject";
 import { User } from "discord.js";
 
+// Stage 3 (2026-05-13): `lastGift` removed. Gift cooldown is now owned by the
+// server module (`mod_azor_api_interactions` audit table); the bot is no
+// longer the source of truth. See docs/PLAN.md Stage 3.
 
 export class DiscordAccount extends ORMObject<{}> {
 	private _userId: string = '';
 	private _name: string = '';
-	private _lastGift?: number; // Timestamp of the last time the character was updated
 
 	constructor({ key, db_obj }: { key: string, db_obj: User}) {
 		super({ key, db_obj });
@@ -26,10 +28,7 @@ export class DiscordAccount extends ORMObject<{}> {
 
 	}
 
-	public set lastGift(time: number | undefined) { this._lastGift = time; }
-
 	public get userId(): string { return this._userId }
 	public get name(): string { return this._name }
-	public get lastGift(): number | undefined { return this._lastGift; }
 
 }

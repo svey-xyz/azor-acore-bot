@@ -19,20 +19,23 @@ packages/server-module/
 ├── data/
 │   └── sql/
 │       ├── db-auth/base/            # Stage 5: mod_azor_api_account_links
-│       ├── db-characters/base/      # Stage 3: mod_azor_api_interactions
+│       ├── db-characters/base/
+│       │   └── mod_azor_api_interactions.sql  # Stage 3: audit log
 │       └── db-world/base/
-│           └── mod_azor_api_config.sql
+│           └── mod_azor_api_config.sql        # runtime kv config
 └── src/
     ├── AzorApi.h                    # schema version, error code strings
     ├── AzorApi_loader.{h,cpp}       # AC_ADD_SCRIPT_LOADER entry point
     ├── AzorApiCharacter.{h,cpp}     # CharacterSnapshot + name → snapshot loader
+    ├── AzorApiInteractions.{h,cpp}  # Stage 3: cooldown/insert/history/delete over the audit table
     ├── AzorApiCommandScript.cpp     # `.azor api …` command tree + handlers
     ├── AzorApiConfig.{h,cpp}        # mod_azor_api_config runtime cache
     ├── AzorApiJson.h                # JSON envelope writer (hand-rolled, no deps)
+    ├── AzorApiPlayerScript.cpp      # Stage 3: OnPlayerDelete cleanup
     └── AzorApiWorldScript.cpp       # WorldScript: refresh config on startup / reload
 ```
 
-## Stage 2 endpoints (current)
+## Endpoints (Stage 2 + Stage 3)
 
 | Command | JSON `data` shape |
 |---|---|
@@ -42,13 +45,26 @@ packages/server-module/
 | `.azor api character get <name>` | `CharacterSnapshot` |
 | `.azor api character location <name>` | `{ zoneId, mapId, online }` |
 | `.azor api character status <name>` | `{ online, level }` |
+| `.azor api character interact <name> <type> <source_type> <source_id> [json_payload]` | `{ guid, name, interactionType, sourceType, sourceId, occurredAt, cooldownMs }` |
+| `.azor api character cooldown <name> <type>` | `{ guid, interactionType, lastAt, cooldownMs, remainingMs }` |
+| `.azor api character history <name> [type\|all] [limit]` | `{ guid, limit, interactionType, interactions[] }` |
 
 All responses use the envelope `{ ok: true, data } | { ok: false, error: { code, message } }`.
 Error codes are stable strings — see `AzorApi::ErrorCodes` (C++) and
 `AZOR_API_ERROR_CODES` (`@azor/shared`).
 
-Stage 3 grafts `character interact / cooldown / history` onto the `character`
-subtree. Stage 5 adds a `link` sibling.
+`character interact` is the atomic gate for any side-effect targeted at a
+character: the module reads `<type>.cooldown_ms` and `<type>.min_level` from
+`mod_azor_api_config`, dispatches the per-type action (today: mails
+`gift.item_entry`), and writes the audit row in one `CharacterDatabase`
+transaction. New error codes — `cooldown`, `min_level` — surface in the
+envelope.
+
+`character history` resolves the `[type] [limit]` ambiguity by treating arg2
+as a known interaction type, the literal `all`/`*`, or a bare numeric limit
+when arg3 is absent.
+
+Stage 5 adds a `link` sibling.
 
 ## Building
 

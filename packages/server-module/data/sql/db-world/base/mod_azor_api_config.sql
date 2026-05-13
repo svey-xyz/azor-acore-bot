@@ -21,4 +21,11 @@ CREATE TABLE IF NOT EXISTS `mod_azor_api_config` (
 -- so an operator inspecting the table isn't misled into thinking it's wired up.
 INSERT IGNORE INTO `mod_azor_api_config` (`key`, `value`) VALUES
     ('realm.online.default_limit', '50'),
-    ('realm.online.max_limit',     '500');
+    ('realm.online.max_limit',     '500'),
+    -- Stage 3 — `gift` interaction defaults. `<type>.cooldown_ms` and
+    -- `<type>.min_level` are the generic keys the interact handler consults;
+    -- `gift.item_entry` is gift-specific (the mailed item).
+    -- 86_400_000 ms = 24h.
+    ('gift.cooldown_ms',           '86400000'),
+    ('gift.item_entry',            '11966'),
+    ('gift.min_level',             '10');

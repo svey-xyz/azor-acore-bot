@@ -1,39 +1,54 @@
 /*
  * mod-azor-api — CommandScript.
  *
- * Registers the `.azor api …` command tree and dispatches Stage 2 read-only
- * endpoints. Every handler writes a single JSON envelope line to the chat
- * sink; SOAP captures it from the console output channel and returns it to
- * the caller verbatim.
+ * Registers the `.azor api …` command tree and dispatches every endpoint.
+ * Each handler writes a single JSON envelope line to the chat sink; SOAP
+ * captures it from the console output channel and returns it verbatim.
  *
  * Endpoints (PLAN.md §"API surface (v1)"):
- *   .azor api version
- *   .azor api realm population
- *   .azor api realm online [limit] [offset]
- *   .azor api character get      <name>
- *   .azor api character location <name>
- *   .azor api character status   <name>
+ *   Stage 2 (read):
+ *     .azor api version
+ *     .azor api realm population
+ *     .azor api realm online [limit] [offset]
+ *     .azor api character get      <name>
+ *     .azor api character location <name>
+ *     .azor api character status   <name>
+ *   Stage 3 (interactions):
+ *     .azor api character interact <name> <type> <source_type> <source_id> [json_payload]
+ *     .azor api character cooldown <name> <type>
+ *     .azor api character history  <name> [type] [limit]
  *
- * Stage 3 will graft `character interact / cooldown / history` onto the
- * `character` subtable without touching the root or `realm` branches.
- * Stage 5 grafts a `link` subtable as a sibling of `realm` / `character`.
+ * Stage 5 will graft a `link` subtable as a sibling of `realm` / `character`.
  *
  * Permission model: every command is gated to SEC_ADMINISTRATOR with
  * Console::Yes. SOAP runs as the configured SOAP account; that account's
  * security level becomes our auth boundary. Stage 7 (HTTP) will layer
  * per-source bearer tokens on top of this.
+ *
+ * Concurrency: handlers run on the worldserver thread (one at a time). The
+ * "single CharacterDatabase transaction" PLAN.md asks for around interact is
+ * achieved by sequencing: sync cooldown read → mail+audit writes appended to
+ * one transaction → commit. No other writer touches our tables, so the
+ * gap between the SELECT and the txn is safe.
  */
 
 #include "AzorApi.h"
 #include "AzorApiCharacter.h"
 #include "AzorApiConfig.h"
+#include "AzorApiInteractions.h"
 #include "AzorApiJson.h"
 
 #include "Chat.h"
 #include "ChatCommand.h"
 #include "Config.h"
+#include "DatabaseEnv.h"
+#include "Item.h"
+#include "ItemTemplate.h"
 #include "Log.h"
+#include "Mail.h"
 #include "ObjectAccessor.h"
+#include "ObjectGuid.h"
+#include "ObjectMgr.h"
 #include "Player.h"
 #include "ScriptMgr.h"
 #include "World.h"
@@ -41,6 +56,9 @@
 #include "WorldSessionMgr.h"
 
 #include <algorithm>
+#include <array>
+#include <charconv>
+#include <chrono>
 #include <string>
 #include <vector>
 
@@ -90,6 +108,83 @@ namespace
             return a->GetName() < b->GetName();
         });
         return out;
+    }
+
+    // Wall-clock epoch milliseconds. Matches the `BIGINT UNSIGNED occurred_at`
+    // storage and the TS-side `Date.now()`. Don't use GameTime::GetGameTimeMS()
+    // here — that's monotonic-since-startup, not epoch.
+    uint64_t NowMs()
+    {
+        return static_cast<uint64_t>(
+            std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::system_clock::now().time_since_epoch()).count());
+    }
+
+    // Whitelist for `source_type`. Mirrors `AZOR_API_SOURCE_TYPES` in
+    // packages/shared/src/index.ts and the SQL ENUM definition. Lockstep-by-eye.
+    constexpr std::array<std::string_view, 4> kSourceTypes = {
+        "discord", "website", "admin", "system",
+    };
+
+    // Whitelist for `interaction_type`. Adding a type here also requires a
+    // handler block inside `HandleApiCharacterInteract` (see DispatchAction)
+    // and a matching entry in `AZOR_API_INTERACTION_TYPES`.
+    constexpr std::array<std::string_view, 1> kInteractionTypes = {
+        "gift",
+    };
+
+    template <std::size_t N>
+    bool IsKnown(std::array<std::string_view, N> const& set, std::string_view value)
+    {
+        return std::find(set.begin(), set.end(), value) != set.end();
+    }
+
+    // Dispatch the side-effect for a given interaction type. Today: `gift` mails
+    // a single configured item. Appends writes to `trans`; the caller commits
+    // the same transaction alongside the audit-row INSERT.
+    //
+    // Returns `std::nullopt` on success. On failure, returns a (code, message)
+    // pair the caller surfaces as an error envelope.
+    std::optional<std::pair<std::string_view, std::string>>
+    DispatchAction(CharacterDatabaseTransaction& trans,
+                   std::string_view              interactionType,
+                   uint32                        guidLow)
+    {
+        if (interactionType == "gift")
+        {
+            uint32 const itemEntry = AzorApi::Config::GetUInt32("gift.item_entry", 0);
+            if (itemEntry == 0)
+                return std::make_pair(AzorApi::ErrorCodes::Internal,
+                                      std::string("gift.item_entry is not configured"));
+
+            ItemTemplate const* tmpl = sObjectMgr->GetItemTemplate(itemEntry);
+            if (!tmpl)
+                return std::make_pair(AzorApi::ErrorCodes::Internal,
+                                      "gift.item_entry " + std::to_string(itemEntry) + " is not a known item");
+
+            Item* item = Item::CreateItem(itemEntry, 1);
+            if (!item)
+                return std::make_pair(AzorApi::ErrorCodes::Internal,
+                                      std::string("failed to instantiate gift item"));
+            item->SaveToDB(trans);
+
+            std::string const subject = AzorApi::Config::GetString("gift.mail_subject", "A gift has arrived");
+            std::string const body    = AzorApi::Config::GetString("gift.mail_body",    "A small token from across the realm.");
+
+            MailDraft draft(subject, body);
+            draft.AddItem(item);
+
+            Player* online = ObjectAccessor::FindPlayer(ObjectGuid::Create<HighGuid::Player>(guidLow));
+            MailReceiver receiver(online, static_cast<ObjectGuid::LowType>(guidLow));
+            MailSender   sender(MAIL_NORMAL, /*senderGuidOrEntry=*/ 0u, MAIL_STATIONERY_GM);
+            draft.SendMailTo(trans, receiver, sender);
+            return std::nullopt;
+        }
+
+        // Unreachable if the caller validates `interactionType` against
+        // kInteractionTypes first — defensive only.
+        return std::make_pair(AzorApi::ErrorCodes::Unimplemented,
+                              std::string("no handler for interaction type"));
     }
 
     void WriteCharacterObject(Writer& w, AzorApi::CharacterSnapshot const& s)
@@ -279,6 +374,248 @@ namespace
         }));
     }
 
+    // ---- Stage 3 handlers -------------------------------------------------
+
+    // .azor api character interact <name> <type> <source_type> <source_id> [json_payload]
+    //
+    // Atomic per-character action:
+    //   1. Resolve character (online or in CharacterCache).
+    //   2. Per-type min_level gate.
+    //   3. Per-type cooldown gate (last occurrence + cooldown_ms vs. now).
+    //   4. Action dispatch + audit insert inside one CharacterDatabase txn.
+    //
+    // Errors: not_found, invalid_arg, min_level, cooldown, internal.
+    bool HandleApiCharacterInteract(ChatHandler*   handler,
+                                    std::string    name,
+                                    std::string    interactionType,
+                                    std::string    sourceType,
+                                    std::string    sourceId,
+                                    Optional<Tail> payloadJson)
+    {
+        if (!EnsureEnabled(handler)) return true;
+        LogCall(handler, "character interact");
+
+        if (name.empty())
+            return ReplyErr(handler, AzorApi::ErrorCodes::InvalidArg, "name is required");
+        if (interactionType.empty())
+            return ReplyErr(handler, AzorApi::ErrorCodes::InvalidArg, "interaction type is required");
+        if (sourceType.empty())
+            return ReplyErr(handler, AzorApi::ErrorCodes::InvalidArg, "source_type is required");
+        if (sourceId.empty())
+            return ReplyErr(handler, AzorApi::ErrorCodes::InvalidArg, "source_id is required");
+
+        if (!IsKnown(kInteractionTypes, interactionType))
+            return ReplyErr(handler, AzorApi::ErrorCodes::InvalidArg, "unknown interaction type");
+        if (!IsKnown(kSourceTypes, sourceType))
+            return ReplyErr(handler, AzorApi::ErrorCodes::InvalidArg, "unknown source_type");
+
+        std::optional<std::string_view> payloadView;
+        std::string                     payloadStorage;
+        if (payloadJson)
+        {
+            payloadStorage = std::string(*payloadJson);
+            if (!payloadStorage.empty())
+            {
+                // Soft cap on payload size. MySQL's JSON column type rejects
+                // malformed JSON at INSERT — that path surfaces as `internal`.
+                if (payloadStorage.size() > 4096)
+                    return ReplyErr(handler, AzorApi::ErrorCodes::InvalidArg, "payload exceeds 4096 bytes");
+                payloadView = std::string_view(payloadStorage);
+            }
+        }
+
+        auto snap = AzorApi::LoadCharacter(name);
+        if (!snap)
+            return ReplyErr(handler, AzorApi::ErrorCodes::NotFound, "no character with that name");
+
+        // Min-level gate (per-type). Absent or 0 means "no minimum".
+        uint32 const minLevel = AzorApi::Config::GetUInt32(interactionType + ".min_level", 0u);
+        if (minLevel > 0 && snap->level < minLevel)
+            return ReplyErr(handler, AzorApi::ErrorCodes::MinLevel,
+                            "requires level >= " + std::to_string(minLevel));
+
+        // Cooldown gate (per-type). Absent or 0 means "no cooldown".
+        uint64_t const cooldownMs = static_cast<uint64_t>(
+            AzorApi::Config::GetInt64(interactionType + ".cooldown_ms", 0));
+        uint64_t const nowMs  = NowMs();
+        uint64_t const lastAt = AzorApi::Interactions::LastOccurredAt(snap->guid, interactionType);
+
+        if (cooldownMs > 0 && lastAt > 0 && nowMs >= lastAt)
+        {
+            uint64_t const elapsed = nowMs - lastAt;
+            if (elapsed < cooldownMs)
+            {
+                uint64_t const remaining = cooldownMs - elapsed;
+                return ReplyErr(handler, AzorApi::ErrorCodes::Cooldown,
+                                std::to_string(remaining) + " ms remaining");
+            }
+        }
+
+        CharacterDatabaseTransaction trans = CharacterDatabase.BeginTransaction();
+
+        if (auto err = DispatchAction(trans, interactionType, snap->guid))
+            return ReplyErr(handler, err->first, err->second);
+
+        AzorApi::Interactions::AppendInsert(trans, snap->guid, interactionType,
+                                            sourceType, sourceId, payloadView, nowMs);
+
+        CharacterDatabase.CommitTransaction(trans);
+
+        return ReplyOk(handler, AzorApi::Json::Ok([&](Writer& w) {
+            w.StartObject();
+            w.Key("guid");            w.Uint(snap->guid);
+            w.Key("name");            w.String(snap->name);
+            w.Key("interactionType"); w.String(interactionType);
+            w.Key("sourceType");      w.String(sourceType);
+            w.Key("sourceId");        w.String(sourceId);
+            w.Key("occurredAt");      w.Uint(nowMs);
+            w.Key("cooldownMs");      w.Uint(cooldownMs);
+            w.EndObject();
+        }));
+    }
+
+    // .azor api character cooldown <name> <type>
+    //
+    // Returns the remaining cooldown for a (character, interactionType) pair.
+    // `remainingMs` is 0 when no cooldown is active (no prior interaction or
+    // cooldown has fully elapsed).
+    bool HandleApiCharacterCooldown(ChatHandler* handler,
+                                    std::string  name,
+                                    std::string  interactionType)
+    {
+        if (!EnsureEnabled(handler)) return true;
+        LogCall(handler, "character cooldown");
+
+        if (name.empty())
+            return ReplyErr(handler, AzorApi::ErrorCodes::InvalidArg, "name is required");
+        if (interactionType.empty())
+            return ReplyErr(handler, AzorApi::ErrorCodes::InvalidArg, "interaction type is required");
+        if (!IsKnown(kInteractionTypes, interactionType))
+            return ReplyErr(handler, AzorApi::ErrorCodes::InvalidArg, "unknown interaction type");
+
+        auto snap = AzorApi::LoadCharacter(name);
+        if (!snap)
+            return ReplyErr(handler, AzorApi::ErrorCodes::NotFound, "no character with that name");
+
+        uint64_t const cooldownMs = static_cast<uint64_t>(
+            AzorApi::Config::GetInt64(interactionType + ".cooldown_ms", 0));
+        uint64_t const nowMs  = NowMs();
+        uint64_t const lastAt = AzorApi::Interactions::LastOccurredAt(snap->guid, interactionType);
+
+        uint64_t remaining = 0;
+        if (cooldownMs > 0 && lastAt > 0 && nowMs >= lastAt)
+        {
+            uint64_t const elapsed = nowMs - lastAt;
+            if (elapsed < cooldownMs)
+                remaining = cooldownMs - elapsed;
+        }
+
+        return ReplyOk(handler, AzorApi::Json::Ok([&](Writer& w) {
+            w.StartObject();
+            w.Key("guid");            w.Uint(snap->guid);
+            w.Key("interactionType"); w.String(interactionType);
+            w.Key("lastAt");          w.Uint(lastAt);
+            w.Key("cooldownMs");      w.Uint(cooldownMs);
+            w.Key("remainingMs");     w.Uint(remaining);
+            w.EndObject();
+        }));
+    }
+
+    // .azor api character history <name> [type] [limit]
+    //
+    // PLAN.md spec allows both trailing args to be optional, which is
+    // ambiguous when only one is given (is it a type or a limit?). Resolution:
+    // if arg2 is a known interaction type, treat it as the filter; if it
+    // parses as uint32 and arg3 is absent, treat it as the limit. Pass `all`
+    // (or omit) for an unfiltered read.
+    bool HandleApiCharacterHistory(ChatHandler*          handler,
+                                   std::string           name,
+                                   Optional<std::string> arg2,
+                                   Optional<uint32>      arg3)
+    {
+        if (!EnsureEnabled(handler)) return true;
+        LogCall(handler, "character history");
+
+        if (name.empty())
+            return ReplyErr(handler, AzorApi::ErrorCodes::InvalidArg, "name is required");
+
+        Optional<std::string> typeFilter;
+        Optional<uint32>      limitArg;
+
+        if (arg2)
+        {
+            if (*arg2 == "all" || *arg2 == "*")
+            {
+                if (arg3) limitArg = arg3;
+            }
+            else if (IsKnown(kInteractionTypes, *arg2))
+            {
+                typeFilter = arg2;
+                if (arg3) limitArg = arg3;
+            }
+            else
+            {
+                // Try numeric — single-arg shorthand for limit-only.
+                uint32 parsed = 0;
+                auto [p, ec] = std::from_chars(arg2->data(), arg2->data() + arg2->size(), parsed);
+                if (ec == std::errc{} && p == arg2->data() + arg2->size() && !arg3)
+                    limitArg = parsed;
+                else
+                    return ReplyErr(handler, AzorApi::ErrorCodes::InvalidArg,
+                                    "unknown interaction type (use one of the known types or `all`)");
+            }
+        }
+
+        uint32 const defaultLimit = AzorApi::Config::GetUInt32("interactions.history.default_limit", 20);
+        uint32 const maxLimit     = AzorApi::Config::GetUInt32("interactions.history.max_limit", 200);
+
+        uint32 effLimit = limitArg.value_or(defaultLimit);
+        if (effLimit == 0)
+            return ReplyErr(handler, AzorApi::ErrorCodes::InvalidArg, "limit must be >= 1");
+        if (effLimit > maxLimit)
+            effLimit = maxLimit;
+
+        auto snap = AzorApi::LoadCharacter(name);
+        if (!snap)
+            return ReplyErr(handler, AzorApi::ErrorCodes::NotFound, "no character with that name");
+
+        std::optional<std::string_view> filterView;
+        if (typeFilter)
+            filterView = std::string_view(*typeFilter);
+
+        std::vector<AzorApi::Interactions::HistoryRow> rows =
+            AzorApi::Interactions::Load(snap->guid, filterView, effLimit);
+
+        return ReplyOk(handler, AzorApi::Json::Ok([&](Writer& w) {
+            w.StartObject();
+            w.Key("guid");  w.Uint(snap->guid);
+            w.Key("limit"); w.Uint(effLimit);
+            w.Key("interactionType");
+            if (typeFilter) w.String(*typeFilter);
+            else            w.Null();
+            w.Key("interactions");
+            w.StartArray();
+            for (auto const& row : rows)
+            {
+                w.StartObject();
+                w.Key("id");              w.Uint(row.id);
+                w.Key("interactionType"); w.String(row.interactionType);
+                w.Key("sourceType");      w.String(row.sourceType);
+                w.Key("sourceId");        w.String(row.sourceId);
+                w.Key("occurredAt");      w.Uint(row.occurredAt);
+                w.Key("payloadJson");
+                // Surface the stored JSON as a string (clients re-parse if
+                // they care). The hand-rolled writer has no raw-passthrough
+                // mode; lifting that limitation is a Stage 7-era refactor.
+                if (row.payloadJson) w.String(*row.payloadJson);
+                else                 w.Null();
+                w.EndObject();
+            }
+            w.EndArray();
+            w.EndObject();
+        }));
+    }
+
     // ---- command tree -----------------------------------------------------
 
     class AzorApiCommandScript : public CommandScript
@@ -299,6 +636,9 @@ namespace
                 { "get",      HandleApiCharacterGet,      SEC_ADMINISTRATOR, Console::Yes },
                 { "location", HandleApiCharacterLocation, SEC_ADMINISTRATOR, Console::Yes },
                 { "status",   HandleApiCharacterStatus,   SEC_ADMINISTRATOR, Console::Yes },
+                { "interact", HandleApiCharacterInteract, SEC_ADMINISTRATOR, Console::Yes },
+                { "cooldown", HandleApiCharacterCooldown, SEC_ADMINISTRATOR, Console::Yes },
+                { "history",  HandleApiCharacterHistory,  SEC_ADMINISTRATOR, Console::Yes },
             };
 
             static ChatCommandTable apiTable =
