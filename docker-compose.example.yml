@@ -1,12 +1,14 @@
 # Example compose file. Copy to docker-compose.yml and customize.
 #
 #   cp docker-compose.example.yml docker-compose.yml
-#   cp .env.example .env             # then fill in values
+#   cp .env.example .env             # then fill in secrets/endpoints
+#   # optional: tweak ./config/azor.config.json
+#   # optional: drop your SSH private key at ./config/ssh_key (chmod 600)
 #   docker compose up -d
 #
 # Drop the resulting container onto the same Docker network as your
 # AzerothCore worldserver/authserver/MySQL stack so SOAP_ENDPOINT and
-# MYSQL_ENDPOINT can be set to service names.
+# MYSQL_ENDPOINT can resolve service names.
 
 services:
   azor:
@@ -18,6 +20,13 @@ services:
     restart: unless-stopped
     env_file:
       - .env
+    volumes:
+      # Holds:
+      #   - azor.config.json  (behaviour: gift, announcements, enabled commands)
+      #   - ssh_key           (SSH private key, only when SSH_TUNNEL_ENABLED=true)
+      # The image ships sensible defaults, so the file is optional —
+      # mount this volume only when you want to override them.
+      - ./config:/config:ro
     # Sane resource defaults — tune to taste.
     deploy:
       resources:

@@ -21,7 +21,12 @@ An [AzerothCore](https://www.azerothcore.org) integrated [Discord](https://disco
 
 ## Install
 
-**Azor** is distributed as a single [Docker image](https://hub.docker.com/r/svey/azor-acore-bot) for `linux/amd64` and `linux/arm64`. Everything is configured via environment variables — no on-disk config files, no extra volumes.
+**Azor** is distributed as a single [Docker image](https://hub.docker.com/r/svey/azor-acore-bot) for `linux/amd64` and `linux/arm64`. Configuration is split in two:
+
+- **Secrets and endpoints** (Discord token, SOAP, MySQL, SSH) → environment variables, supplied via `.env` or your orchestrator's secret store.
+- **Behaviour** (gift item, cooldowns, announcement flags, command allow-list) → JSON config file mounted into the container at `/config/azor.config.json`.
+
+The image ships with sensible defaults baked in, so the only thing strictly required to run is the `.env` file.
 
 ### 1. Prerequisites
 - An AzerothCore server you can reach over the network, with:
@@ -38,7 +43,10 @@ An [AzerothCore](https://www.azerothcore.org) integrated [Discord](https://disco
 - [Docker](https://docs.docker.com/get-docker/) (24+ recommended).
 
 ### 2. Configure
-Copy the example env file and fill in your values:
+
+#### `.env` — secrets & endpoints
+
+Copy the example and fill it in:
 
 ```bash
 curl -fsSLO https://raw.githubusercontent.com/svey-xyz/azor-acore-bot/main/.env.example
@@ -46,7 +54,7 @@ mv .env.example .env
 $EDITOR .env
 ```
 
-#### Required
+Required:
 
 | Variable | Description |
 |---|---|
@@ -56,21 +64,78 @@ $EDITOR .env
 | `SOAP_PORT` | AzerothCore SOAP port (default `7878`) |
 | `SOAP_USER` | SOAP admin username |
 | `SOAP_PASSWORD` | SOAP admin password |
-| `MYSQL_ENDPOINT` | Hostname/IP of the AzerothCore MySQL server |
+| `MYSQL_ENDPOINT` | Hostname/IP of the AzerothCore MySQL server (ignored if SSH tunnel is on) |
 | `MYSQL_PORT` | MySQL port (default `3306`) |
 | `MYSQL_USER` | MySQL user (read-only recommended) |
 | `MYSQL_PASSWORD` | MySQL password |
 
-#### Optional
+SSH tunnel (optional — replaces direct MySQL exposure):
 
 | Variable | Default | Description |
 |---|---|---|
-| `TIP_ITEM_ID` | `11966` | Item entry ID used by `/character gift` (Small Sack of Coins) |
-| `GIFT_LEVEL_REQUIREMENT` | `10` | Minimum character level to receive a gift |
-| `GIFT_COOLDOWN` | `86400000` | Gift cooldown in milliseconds (24h) |
-| `ANNOUNCE_COMMANDS_GLOBALLY` | `true` | Broadcast command use to the whole server |
-| `ANNOUNCE_COMMANDS_TO_PLAYERS` | `true` | Whisper the targeted player when a command runs |
-| `ENABLED_COMMANDS` | *all* | Comma-separated allow-list of enabled commands |
+| `SSH_TUNNEL_ENABLED` | `false` | Route MySQL through SSH |
+| `SSH_HOST` | — | SSH server hostname / IP |
+| `SSH_PORT` | `22` | SSH port |
+| `SSH_USER` | `discord-bot` | SSH username on the remote server |
+| `SSH_PRIVATE_KEY_PATH` | `/config/ssh_key` | Path inside the container to the mounted private key |
+| `MYSQL_REMOTE_HOST` | `127.0.0.1` | MySQL host as seen from the SSH server |
+| `SSH_TUNNEL_LOCAL_PORT` | `13306` | Local port the tunnel binds to inside the container |
+
+Misc:
+
+| Variable | Default | Description |
+|---|---|---|
+| `AZOR_CONFIG_PATH` | `/config/azor.config.json` | Where to load the JSON config from |
+
+#### `/config/azor.config.json` — behaviour
+
+The image ships defaults at `/config/azor.config.json`. To override, drop your own file at `./config/azor.config.json` and mount `./config:/config:ro`. The example compose file already does this.
+
+```jsonc
+{
+  "$schema": "./azor.config.schema.json",
+  "gift": {
+    "itemId": 11966,            // Item template entry (Small Sack of Coins)
+    "minLevel": 10,             // Min recipient character level
+    "cooldownMs": 86400000      // 24h
+  },
+  "announcements": {
+    "global": true,             // Broadcast command use to the realm
+    "toPlayer": true            // Whisper the targeted player
+  },
+  "commands": {
+    "enabled": [                // Allow-list of slash subcommands
+      "character.info",
+      "character.location",
+      "character.status",
+      "character.gift",
+      "realm.online",
+      "realm.pop"
+    ]
+  }
+}
+```
+
+A JSON Schema ships at `config/azor.config.schema.json` for editor autocomplete and validation. The legacy env vars (`TIP_ITEM_ID`, `GIFT_LEVEL_REQUIREMENT`, `GIFT_COOLDOWN`, `ANNOUNCE_COMMANDS_GLOBALLY`, `ANNOUNCE_COMMANDS_TO_PLAYERS`, `ENABLED_COMMANDS`) still work as overrides if you want to tweak a single value without rebuilding the volume.
+
+#### `/config/ssh_key` — SSH private key (only if tunneling)
+
+When `SSH_TUNNEL_ENABLED=true`, the bot reads its private key from `SSH_PRIVATE_KEY_PATH` (default `/config/ssh_key`). Drop the key into the same `./config` directory you're already mounting:
+
+```bash
+mkdir -p config
+cp ~/.ssh/azor_id_ed25519 config/ssh_key
+chmod 600 config/ssh_key
+```
+
+On the AzerothCore host, create a locked-down user and add the matching public key with port-forwarding-only `authorized_keys` options:
+
+```sshd
+# /home/discord-bot/.ssh/authorized_keys
+restrict,port-forwarding,permitopen="127.0.0.1:3306" ssh-ed25519 AAAA…
+```
+
+This disables shell login, agent forwarding, and X11 — the key can do nothing except open a forward to MySQL on `127.0.0.1:3306`. Bind MySQL itself to `127.0.0.1` (`bind-address = 127.0.0.1`) so it's only reachable through the tunnel.
 
 ### 3. Run
 
@@ -80,9 +145,12 @@ $EDITOR .env
 docker run -d \
 	--name azor-acore-bot \
 	--env-file .env \
+	-v "$PWD/config:/config:ro" \
 	--restart unless-stopped \
 	svey/azor-acore-bot:latest
 ```
+
+The `-v` mount is only needed if you're overriding the defaults or using the SSH tunnel.
 
 If your AzerothCore stack runs in Docker, join its network so the bot can resolve service names:
 
@@ -90,6 +158,7 @@ If your AzerothCore stack runs in Docker, join its network so the bot can resolv
 docker run -d \
 	--name azor-acore-bot \
 	--env-file .env \
+	-v "$PWD/config:/config:ro" \
 	--network <your-acore-network> \
 	--restart unless-stopped \
 	svey/azor-acore-bot:latest
@@ -128,14 +197,15 @@ docker logs -f azor-acore-bot
 docker compose logs -f azor
 ```
 
-You should see `Ready! Logged in as <bot-name>#0000` once the bot connects.
+You should see `[config] loaded /config/azor.config.json` followed by `Ready! Logged in as <bot-name>#0000` once the bot connects.
 
 ### Operational notes
 
 - The container runs as a non-root `bun` user (UID 1000) with `tini` as PID 1 — `docker stop` / `docker compose down` shut the Discord client down cleanly.
-- No volumes are required. The bot keeps no on-disk state; restart it freely.
+- The only optional volume is `/config` (read-only). The bot keeps no on-disk state otherwise; restart it freely.
 - Resource footprint is small (≈ 100–150 MB RSS). The compose example sets a 256 MB cap.
 - All writes go through SOAP — give the MySQL user **`SELECT` only**.
+- The image build context ignores `config/ssh_key*`, `config/*.pem`, and `config/*.key` so private keys from your dev tree never end up baked into the image.
 
 ### Build from source
 

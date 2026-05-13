@@ -19,3 +19,11 @@ README.md
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Never bake user-supplied secrets / keys into the image. The /config volume
+# is intended to be mounted at runtime — see docker-compose.example.yml.
+config/ssh_key
+config/ssh_key.pub
+config/*.pem
+config/*.key
+config/id_*

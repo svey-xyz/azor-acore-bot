@@ -1,0 +1,68 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"$id": "https://github.com/svey-xyz/azor-acore-bot/azor.config.schema.json",
+	"title": "Azor bot configuration",
+	"description": "Behavioural config for azor-acore-bot. Secrets and endpoints live in env vars; everything here is safe to commit.",
+	"type": "object",
+	"additionalProperties": false,
+	"properties": {
+		"$schema": { "type": "string" },
+		"gift": {
+			"type": "object",
+			"description": "Settings for the /character gift command.",
+			"additionalProperties": false,
+			"properties": {
+				"itemId": {
+					"type": "integer",
+					"minimum": 1,
+					"description": "Item template entry sent to the recipient. Default 11966 = Small Sack of Coins."
+				},
+				"minLevel": {
+					"type": "integer",
+					"minimum": 1,
+					"maximum": 80,
+					"description": "Minimum recipient character level required to receive a gift."
+				},
+				"cooldownMs": {
+					"type": "integer",
+					"minimum": 0,
+					"description": "Per-Discord-user cooldown between gifts, in milliseconds."
+				}
+			},
+			"required": ["itemId", "minLevel", "cooldownMs"]
+		},
+		"announcements": {
+			"type": "object",
+			"description": "Whether the bot announces command activity in-game.",
+			"additionalProperties": false,
+			"properties": {
+				"global": {
+					"type": "boolean",
+					"description": "Broadcast command use to the whole realm."
+				},
+				"toPlayer": {
+					"type": "boolean",
+					"description": "Whisper the targeted player when a command runs against them."
+				}
+			},
+			"required": ["global", "toPlayer"]
+		},
+		"commands": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"enabled": {
+					"type": "array",
+					"description": "Allow-list of slash subcommands the bot will respond to. Use the form 'top.sub', e.g. 'character.info'.",
+					"items": {
+						"type": "string",
+						"pattern": "^[a-z][a-z0-9_-]*\\.[a-z][a-z0-9_-]*$"
+					},
+					"uniqueItems": true
+				}
+			},
+			"required": ["enabled"]
+		}
+	},
+	"required": ["gift", "announcements", "commands"]
+}

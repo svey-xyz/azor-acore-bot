@@ -1,0 +1,22 @@
+{
+	"$schema": "./azor.config.schema.json",
+	"gift": {
+		"itemId": 11966,
+		"minLevel": 10,
+		"cooldownMs": 86400000
+	},
+	"announcements": {
+		"global": true,
+		"toPlayer": true
+	},
+	"commands": {
+		"enabled": [
+			"character.info",
+			"character.location",
+			"character.status",
+			"character.gift",
+			"realm.online",
+			"realm.pop"
+		]
+	}
+}

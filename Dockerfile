@@ -20,7 +20,9 @@ RUN bun install --frozen-lockfile --production
 FROM oven/bun:${BUN_VERSION}-alpine AS runtime
 WORKDIR /usr/app
 ENV NODE_ENV=production \
-    TZ=Etc/UTC
+    TZ=Etc/UTC \
+    AZOR_CONFIG_PATH=/config/azor.config.json \
+    SSH_PRIVATE_KEY_PATH=/config/ssh_key
 
 # tini gives the bot PID 1 with proper SIGTERM/SIGINT forwarding so
 # `docker stop` and `docker compose down` shut the Discord client down cleanly.
@@ -32,6 +34,12 @@ COPY src ./src
 COPY server ./server
 COPY lib ./lib
 COPY @types ./@types
+
+# Bake the default config into /config so the image runs out of the box.
+# Users mount their own /config volume to override (and to drop in ssh_key).
+COPY config/ /config/
+RUN chown -R bun:bun /config
+VOLUME ["/config"]
 
 USER bun
 

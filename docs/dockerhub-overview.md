@@ -6,17 +6,24 @@ Discord bot that bridges an [AzerothCore](https://www.azerothcore.org) WoW priva
 - **License:** ISC
 - **Architectures:** `linux/amd64`, `linux/arm64`
 
+## Configuration model
+
+- **`.env`** holds secrets and endpoints (Discord token, SOAP, MySQL, SSH).
+- **`/config/azor.config.json`** holds non-secret behaviour (gift item, cooldowns, announcements, enabled commands). The image ships sensible defaults — mount your own file only if you want to override them.
+- **`/config/ssh_key`** (optional) is read when `SSH_TUNNEL_ENABLED=true`. Drop it in the same `/config` mount as the JSON file.
+
 ## Quick start
 
 ```bash
 docker run -d \
   --name azor-acore-bot \
   --env-file .env \
+  -v "$PWD/config:/config:ro" \
   --restart unless-stopped \
   svey/azor-acore-bot:latest
 ```
 
-See [`.env.example`](https://github.com/svey-xyz/azor-acore-bot/blob/main/.env.example) for the full list of variables.
+The `-v` mount is optional — the image ships with defaults baked in.
 
 ## docker compose
 
@@ -27,6 +34,8 @@ services:
     container_name: azor-acore-bot
     restart: unless-stopped
     env_file: [.env]
+    volumes:
+      - ./config:/config:ro
     networks: [acore_network]
 
 networks:
@@ -34,7 +43,7 @@ networks:
     external: true
 ```
 
-Drop this onto the same Docker network as your AzerothCore stack and the bot will be able to reach the worldserver (SOAP) and MySQL by service name.
+Drop this onto the same Docker network as your AzerothCore stack and the bot will reach the worldserver (SOAP) and MySQL by service name.
 
 ## Tags
 
@@ -56,14 +65,25 @@ Drop this onto the same Docker network as your AzerothCore stack and the bot wil
 | `MYSQL_ENDPOINT` / `MYSQL_PORT` | AzerothCore MySQL host + port |
 | `MYSQL_USER` / `MYSQL_PASSWORD` | MySQL credentials (read-only recommended) |
 
-Optional vars (`TIP_ITEM_ID`, `GIFT_LEVEL_REQUIREMENT`, `GIFT_COOLDOWN`, `ANNOUNCE_COMMANDS_GLOBALLY`, `ANNOUNCE_COMMANDS_TO_PLAYERS`, `ENABLED_COMMANDS`) are documented in the [README](https://github.com/svey-xyz/azor-acore-bot#readme).
+Optional env vars for SSH tunneling (`SSH_TUNNEL_ENABLED`, `SSH_HOST`, `SSH_PORT`, `SSH_USER`, `SSH_PRIVATE_KEY_PATH`, `MYSQL_REMOTE_HOST`, `SSH_TUNNEL_LOCAL_PORT`) and config file overrides (`AZOR_CONFIG_PATH`) are documented in the [README](https://github.com/svey-xyz/azor-acore-bot#readme).
+
+## SSH tunnel
+
+When `SSH_TUNNEL_ENABLED=true` the bot opens an SSH connection to `SSH_HOST` and forwards `127.0.0.1:SSH_TUNNEL_LOCAL_PORT` → `MYSQL_REMOTE_HOST:MYSQL_PORT` on the remote machine, so MySQL never needs to be reachable over the network.
+
+1. Mount your private key at `./config/ssh_key` (chmod 600).
+2. On the AzerothCore host, add the matching public key with locked-down `authorized_keys` options:
+   ```
+   restrict,port-forwarding,permitopen="127.0.0.1:3306" ssh-ed25519 AAAA…
+   ```
+3. Bind MySQL to `127.0.0.1` so it's only reachable through the tunnel.
 
 ## Security notes
 
 - Runs as non-root (`bun` user, UID 1000).
 - `tini` is PID 1 — `docker stop` cleanly shuts the Discord client down.
-- The bot needs **read-only** MySQL access; all writes go through SOAP. Create a dedicated MySQL user with `SELECT` only on `acore_characters`, `acore_auth`, `acore_world`.
-- Treat `DISCORD_TOKEN` and `SOAP_PASSWORD` like any other secret — use `--env-file`, Docker secrets, or your orchestrator's secret store.
+- The bot needs **read-only** MySQL access; all writes go through SOAP.
+- Treat `DISCORD_TOKEN` / `SOAP_PASSWORD` / the SSH key as secrets — use `--env-file`, Docker secrets, or your orchestrator's secret store, and mount `/config` read-only.
 
 ## Issues & contributions
 

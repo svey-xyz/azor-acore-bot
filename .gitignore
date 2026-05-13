@@ -16,3 +16,10 @@ package-lock.json
 *.env.production
 
 docker-compose.yml
+
+## Never commit user-supplied SSH keys placed in the /config volume.
+config/ssh_key
+config/ssh_key.pub
+config/*.pem
+config/*.key
+config/id_*

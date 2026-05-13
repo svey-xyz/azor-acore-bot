@@ -1,6 +1,6 @@
 import mysql from 'mysql2';
 import { databaseMap, queries, QUERIES, queryArgType, expectedQueryReturnType, DATABASES } from '@azor.server/queries';
-import { MYSQL_ENDPOINT, MYSQL_USER, MYSQL_PASSWORD } from '@azor.lib/conf.env';
+import { MYSQL_CONFIG } from '@azor.lib/mysqlConfig';
 
 export class DATABASE {
 	private connections: Map<DATABASES, mysql.Connection> = new Map();
@@ -11,11 +11,21 @@ export class DATABASE {
 		if (this.connections.has(database)) return this.connections.get(database) as mysql.Connection;
 
 		const _C = mysql.createConnection({
-			host: MYSQL_ENDPOINT,
-			user: MYSQL_USER,
-			password: MYSQL_PASSWORD,
-			database: database as string
+			host: MYSQL_CONFIG.host,
+			port: MYSQL_CONFIG.port,
+			user: MYSQL_CONFIG.user,
+			password: MYSQL_CONFIG.password,
+			database: database as string,
 		});
+
+		// Remove stale connection on error so the next query recreates it.
+		// This handles tunnel reconnects — mysql2 connections tied to the old
+		// TCP stream are invalid after the tunnel drops and re-establishes.
+		_C.on('error', (err) => {
+			console.error(`[DATABASE] Connection to ${database} lost:`, err.message);
+			this.connections.delete(database);
+		});
+
 		this.connections.set(database, _C);
 
 		return _C;
@@ -45,14 +55,14 @@ export class DATABASE {
 		[QUERIES.GET_ONLINE_CHARACTERS]:
 			(args: queryArgType[QUERIES.GET_ONLINE_CHARACTERS]) =>
 				this.db_query<expectedQueryReturnType[QUERIES.GET_ONLINE_CHARACTERS]>(QUERIES.GET_ONLINE_CHARACTERS, args),
-			
+
 		[QUERIES.GET_ITEM_BY_ENTRY]:
 			(args: queryArgType[QUERIES.GET_ITEM_BY_ENTRY]) =>
 				this.db_query<expectedQueryReturnType[QUERIES.GET_ITEM_BY_ENTRY]>(QUERIES.GET_ITEM_BY_ENTRY, args)
 	}
 
 	private db_query<T>(_Q: QUERIES, args: queryArgType[typeof _Q]): Promise<T> {
-	
+
 		const database = databaseMap[_Q];
 		const query = queries({ _Q, args });
 

@@ -6,23 +6,26 @@ Discord bot that bridges an [AzerothCore](https://www.azerothcore.org) WoW priva
 
 ```
 src/
-  bot.ts                    — Entry point: Discord client setup, command registration
+  bot.ts                    — Entry point: async main(), tunnel init, Discord client setup
   command.ts                — Command interface
   subCommand.ts             — SubCommand interface
   slash-commands/
     character/              — /character {info,location,status,gift}
     realm/                  — /realm {online,pop}
   lib/
-    db.ts                   — Singleton DATABASE instance
+    db.ts                   — Singleton DATABASE instance + DataHandler cache layer
     executeSoapCommand.ts   — SOAP client wrapper for AzerothCore remote access
     formatter.ts            — Discord embed/response formatting helpers
     ORM/                    — Hand-rolled ORM: Character, Item, Realm, DiscordAccount
 server/
-  DATABASE.ts               — mysql2 connection pool + typed query dispatcher
+  DATABASE.ts               — mysql2 connection manager + typed query dispatcher
   queries.ts                — QUERIES enum, typed args/return types, raw SQL
 lib/
   conf.env.ts               — Required env vars (throws if missing)
   options.env.ts            — Optional env vars with defaults (gift config, flags)
+  ssh.env.ts                — Optional SSH tunnel env vars
+  mysqlConfig.ts            — Mutable MySQL connection config (patched by tunnel at startup)
+  sshTunnel.ts              — SSH tunnel manager (ssh2): local net.Server → remote MySQL
   assertValue.ts            — Generic env assertion helper
 @types/
   global.d.ts               — Augments discord.js Client with `commands` collection
@@ -39,7 +42,8 @@ lib/
 - **Runtime:** Bun (use `bun` for all install/run commands)
 - **Language:** TypeScript 6, strict mode, `moduleResolution: nodenext`
 - **Discord:** discord.js v14 (slash commands only, no message content intent)
-- **Database:** mysql2 (direct MySQL to AzerothCore DBs)
+- **Database:** mysql2 (direct or via SSH tunnel to AzerothCore DBs)
+- **SSH tunnel:** `ssh2` + Node `net` — optional, replaces direct MySQL exposure
 - **SOAP:** `soap` package → AzerothCore SOAP endpoint for writes
 - **Env:** dotenv + dotenv-expand
 
@@ -95,6 +99,20 @@ Note: `baseUrl` is deprecated in TS 6. `"ignoreDeprecations": "6.0"` is set in `
 | `ANNOUNCE_COMMANDS_GLOBALLY` | `true` | Broadcast command use to the server |
 | `ANNOUNCE_COMMANDS_TO_PLAYERS` | `true` | Announce to the targeted player |
 | `ENABLED_COMMANDS` | all | Comma-separated list of enabled commands |
+
+### SSH tunnel (all optional; only read when `SSH_TUNNEL_ENABLED=true`)
+
+| Variable | Default | Description |
+|---|---|---|
+| `SSH_TUNNEL_ENABLED` | `false` | Route MySQL through SSH instead of direct TCP |
+| `SSH_HOST` | — | SSH server hostname / IP (the AzerothCore machine) |
+| `SSH_PORT` | `22` | SSH port |
+| `SSH_USER` | — | SSH username on the remote server |
+| `SSH_PRIVATE_KEY_PATH` | — | Absolute path to the private key file (key-based auth only) |
+| `MYSQL_REMOTE_HOST` | `127.0.0.1` | MySQL host as seen from the SSH server |
+| `SSH_TUNNEL_LOCAL_PORT` | `13306` | Local port the tunnel binds to on the bot's machine |
+
+**How it works:** `bot.ts` calls `createSSHTunnel()` before `client.login()`. The tunnel creates a local `net.Server` on `SSH_TUNNEL_LOCAL_PORT`, connects to the SSH server, and `forwardOut`s each incoming socket to `MYSQL_REMOTE_HOST:MYSQL_PORT` on the remote. It then patches `MYSQL_CONFIG.host/port` so `DATABASE` connects through the tunnel. SSH keepalives are sent every 10 s; if the connection drops it reconnects automatically after 5 s. Old mysql2 connections are evicted on error so they're recreated through the new tunnel stream.
 
 ## Adding a Command
 
