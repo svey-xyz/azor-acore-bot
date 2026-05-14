@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS `mod_azor_api_config` (
     PRIMARY KEY (`key`)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;
 
--- Stage 2 seeds. Stage 3 (interactions) adds gift.* keys; Stage 5 adds link.*.
+-- Stage 2/3/5 seeds.
 -- Keep this list minimal — anything not actually read by the module yet stays out
 -- so an operator inspecting the table isn't misled into thinking it's wired up.
 INSERT IGNORE INTO `mod_azor_api_config` (`key`, `value`) VALUES
@@ -28,4 +28,9 @@ INSERT IGNORE INTO `mod_azor_api_config` (`key`, `value`) VALUES
     -- 86_400_000 ms = 24h.
     ('gift.cooldown_ms',           '86400000'),
     ('gift.item_entry',            '11966'),
-    ('gift.min_level',             '10');
+    ('gift.min_level',             '10'),
+    -- Stage 5 — account ↔ external identity linking.
+    -- `link.pending_ttl_ms`: how long a `link begin` code is valid for in-game
+    -- redemption. 600_000 ms = 10 minutes. Clients can override per-call by
+    -- not relying on this; the module clamps via this single config knob.
+    ('link.pending_ttl_ms',        '600000');

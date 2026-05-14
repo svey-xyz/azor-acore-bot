@@ -17,8 +17,10 @@
  *     .azor api character interact <name> <type> <source_type> <source_id> [json_payload]
  *     .azor api character cooldown <name> <type>
  *     .azor api character history  <name> [type] [limit]
- *
- * Stage 5 will graft a `link` subtable as a sibling of `realm` / `character`.
+ *   Stage 5 (account linking):
+ *     .azor api link begin   <code> <source> <external_id>
+ *     .azor api link confirm <code>            (in-game, SEC_PLAYER, no console)
+ *     .azor api link status  <source> <external_id>
  *
  * Permission model: every command is gated to SEC_ADMINISTRATOR with
  * Console::Yes. SOAP runs as the configured SOAP account; that account's
@@ -33,6 +35,7 @@
  */
 
 #include "AzorApi.h"
+#include "AzorApiAccountLinks.h"
 #include "AzorApiCharacter.h"
 #include "AzorApiConfig.h"
 #include "AzorApiInteractions.h"
@@ -131,6 +134,15 @@ namespace
     // and a matching entry in `AZOR_API_INTERACTION_TYPES`.
     constexpr std::array<std::string_view, 1> kInteractionTypes = {
         "gift",
+    };
+
+    // Whitelist for `link.external_source`. Narrower than `kSourceTypes`
+    // because `admin`/`system` are never *linked* identities — they're
+    // synthetic actors used for interaction provenance only. Mirrors
+    // `AZOR_API_LINK_SOURCES` in packages/shared/src/index.ts and the SQL
+    // ENUM on `mod_azor_api_account_links.external_source`.
+    constexpr std::array<std::string_view, 2> kLinkSources = {
+        "discord", "website",
     };
 
     template <std::size_t N>
@@ -616,6 +628,195 @@ namespace
         }));
     }
 
+    // ---- Stage 5 handlers (account linking) -------------------------------
+
+    // Strict shape check on the 8-char hex claim code. Codes are minted by
+    // clients (bot today, website tomorrow) as `crypto.randomBytes(4).toString('hex')`
+    // — exactly 8 lowercase hex chars. We refuse anything else rather than
+    // store arbitrary client-controlled strings as PKs.
+    bool IsValidLinkCode(std::string_view s)
+    {
+        if (s.size() != 8) return false;
+        for (char c : s)
+        {
+            bool const lowerHex = (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f');
+            if (!lowerHex) return false;
+        }
+        return true;
+    }
+
+    // .azor api link begin <code> <source> <external_id>
+    //
+    // Registers a pending claim code. Subsequent in-game `link confirm <code>`
+    // by any logged-in player will bind that player's account_id to the
+    // (source, external_id). Codes expire after `link.pending_ttl_ms` (config).
+    //
+    // Idempotency: re-calling with the same `(code, source, external_id)`
+    // returns ok (the underlying INSERT IGNORE detects collision and the
+    // verify-by-read confirms our payload). A different `(source, external_id)`
+    // colliding on `code` returns `invalid_arg` so the client re-rolls.
+    //
+    // Errors: invalid_arg, already_linked, internal.
+    bool HandleApiLinkBegin(ChatHandler* handler,
+                            std::string  code,
+                            std::string  externalSource,
+                            std::string  externalId)
+    {
+        if (!EnsureEnabled(handler)) return true;
+        LogCall(handler, "link begin");
+
+        if (!IsValidLinkCode(code))
+            return ReplyErr(handler, AzorApi::ErrorCodes::InvalidArg,
+                            "code must be exactly 8 lowercase hex chars");
+        if (externalSource.empty() || !IsKnown(kLinkSources, externalSource))
+            return ReplyErr(handler, AzorApi::ErrorCodes::InvalidArg, "unknown external_source");
+        if (externalId.empty())
+            return ReplyErr(handler, AzorApi::ErrorCodes::InvalidArg, "external_id is required");
+        if (externalId.size() > 64)
+            return ReplyErr(handler, AzorApi::ErrorCodes::InvalidArg, "external_id exceeds 64 bytes");
+
+        uint64_t const nowMs = NowMs();
+
+        // Lazy reaper. Bounds the pending table size without a background
+        // worker; runs at most once per `link begin` invocation.
+        AzorApi::AccountLinks::ReapExpiredPending(nowMs);
+
+        // Already linked? Refuse rebinding — v1 doesn't support unlink.
+        if (auto existing = AzorApi::AccountLinks::LoadConfirmedByExternal(externalSource, externalId))
+            return ReplyErr(handler, AzorApi::ErrorCodes::AlreadyLinked,
+                            "external identity is already linked to account "
+                            + std::to_string(existing->accountId));
+
+        uint64_t const ttlMs    = static_cast<uint64_t>(
+            AzorApi::Config::GetInt64("link.pending_ttl_ms", 600000));
+        uint64_t const expiresAt = nowMs + ttlMs;
+
+        bool const ok = AzorApi::AccountLinks::InsertPending(
+            code, externalSource, externalId, nowMs, expiresAt);
+
+        if (!ok)
+            return ReplyErr(handler, AzorApi::ErrorCodes::InvalidArg,
+                            "code is already in use; retry with a different code");
+
+        return ReplyOk(handler, AzorApi::Json::Ok([&](Writer& w) {
+            w.StartObject();
+            w.Key("code");           w.String(code);
+            w.Key("externalSource"); w.String(externalSource);
+            w.Key("externalId");     w.String(externalId);
+            w.Key("createdAt");      w.Uint(nowMs);
+            w.Key("expiresAt");      w.Uint(expiresAt);
+            w.Key("ttlMs");          w.Uint(ttlMs);
+            w.EndObject();
+        }));
+    }
+
+    // .azor api link confirm <code>
+    //
+    // Player-invoked: redeems a pending code against the calling session's
+    // account_id. Marked Console::No + SEC_PLAYER — SOAP/console can't claim,
+    // and a logged-out client can't either. The session->account mapping is
+    // the trust root for the binding.
+    //
+    // Atomic: DELETE pending + INSERT confirmed in one LoginDatabase txn.
+    //
+    // Errors: invalid_arg, not_found, expired, already_linked, unauthorized,
+    //         internal.
+    bool HandleApiLinkConfirm(ChatHandler* handler, std::string code)
+    {
+        if (!EnsureEnabled(handler)) return true;
+        LogCall(handler, "link confirm");
+
+        WorldSession* sess = handler->GetSession();
+        if (!sess)
+            return ReplyErr(handler, AzorApi::ErrorCodes::Unauthorized,
+                            "link confirm requires an in-game player session");
+
+        uint32 const accountId = sess->GetAccountId();
+        if (accountId == 0)
+            return ReplyErr(handler, AzorApi::ErrorCodes::Unauthorized,
+                            "session has no account_id");
+
+        if (!IsValidLinkCode(code))
+            return ReplyErr(handler, AzorApi::ErrorCodes::InvalidArg,
+                            "code must be exactly 8 lowercase hex chars");
+
+        auto pending = AzorApi::AccountLinks::LoadPending(code);
+        if (!pending)
+            return ReplyErr(handler, AzorApi::ErrorCodes::NotFound, "no such pending code");
+
+        uint64_t const nowMs = NowMs();
+        if (nowMs >= pending->expiresAt)
+        {
+            // Best-effort cleanup so operator-visible state matches the error
+            // response. Fine if the reaper beats us — DELETE is a no-op when
+            // the row is gone.
+            LoginDatabaseTransaction trans = LoginDatabase.BeginTransaction();
+            AzorApi::AccountLinks::AppendDeletePending(trans, code);
+            LoginDatabase.CommitTransaction(trans);
+            return ReplyErr(handler, AzorApi::ErrorCodes::Expired, "claim code has expired");
+        }
+
+        // The (source, external_id) may have been linked between `link begin`
+        // and `link confirm` — re-check before committing.
+        if (auto existing = AzorApi::AccountLinks::LoadConfirmedByExternal(
+                pending->externalSource, pending->externalId))
+        {
+            return ReplyErr(handler, AzorApi::ErrorCodes::AlreadyLinked,
+                            "external identity is already linked to account "
+                            + std::to_string(existing->accountId));
+        }
+
+        LoginDatabaseTransaction trans = LoginDatabase.BeginTransaction();
+        AzorApi::AccountLinks::AppendDeletePending(trans, code);
+        AzorApi::AccountLinks::AppendInsertConfirmed(
+            trans, accountId, pending->externalSource, pending->externalId, nowMs);
+        LoginDatabase.CommitTransaction(trans);
+
+        return ReplyOk(handler, AzorApi::Json::Ok([&](Writer& w) {
+            w.StartObject();
+            w.Key("accountId");      w.Uint(accountId);
+            w.Key("externalSource"); w.String(pending->externalSource);
+            w.Key("externalId");     w.String(pending->externalId);
+            w.Key("linkedAt");       w.Uint(nowMs);
+            w.EndObject();
+        }));
+    }
+
+    // .azor api link status <source> <external_id>
+    //
+    // Reverse lookup: given an external identity, return the bound account_id
+    // (or null) and when it was linked. PK lookup on (external_source, external_id).
+    //
+    // Errors: invalid_arg.
+    bool HandleApiLinkStatus(ChatHandler* handler,
+                             std::string  externalSource,
+                             std::string  externalId)
+    {
+        if (!EnsureEnabled(handler)) return true;
+        LogCall(handler, "link status");
+
+        if (externalSource.empty() || !IsKnown(kLinkSources, externalSource))
+            return ReplyErr(handler, AzorApi::ErrorCodes::InvalidArg, "unknown external_source");
+        if (externalId.empty())
+            return ReplyErr(handler, AzorApi::ErrorCodes::InvalidArg, "external_id is required");
+
+        auto link = AzorApi::AccountLinks::LoadConfirmedByExternal(externalSource, externalId);
+
+        return ReplyOk(handler, AzorApi::Json::Ok([&](Writer& w) {
+            w.StartObject();
+            w.Key("externalSource"); w.String(externalSource);
+            w.Key("externalId");     w.String(externalId);
+            w.Key("linked");         w.Bool(link.has_value());
+            w.Key("accountId");
+            if (link) w.Uint(link->accountId);
+            else      w.Null();
+            w.Key("linkedAt");
+            if (link) w.Uint(link->linkedAt);
+            else      w.Null();
+            w.EndObject();
+        }));
+    }
+
     // ---- command tree -----------------------------------------------------
 
     class AzorApiCommandScript : public CommandScript
@@ -641,11 +842,24 @@ namespace
                 { "history",  HandleApiCharacterHistory,  SEC_ADMINISTRATOR, Console::Yes },
             };
 
+            // `link confirm` is the one outlier: it's the only handler in the
+            // module that must NOT be reachable from SOAP/console (Console::No)
+            // and must be available to ordinary players (SEC_PLAYER). It reads
+            // `handler->GetSession()->GetAccountId()` to know who's claiming,
+            // which is meaningless from a console invocation.
+            static ChatCommandTable linkTable =
+            {
+                { "begin",   HandleApiLinkBegin,   SEC_ADMINISTRATOR, Console::Yes },
+                { "confirm", HandleApiLinkConfirm, SEC_PLAYER,        Console::No  },
+                { "status",  HandleApiLinkStatus,  SEC_ADMINISTRATOR, Console::Yes },
+            };
+
             static ChatCommandTable apiTable =
             {
                 { "version",   HandleApiVersion, SEC_ADMINISTRATOR, Console::Yes },
                 { "realm",     realmTable     },
                 { "character", characterTable },
+                { "link",      linkTable      },
             };
 
             static ChatCommandTable azorTable =

@@ -45,6 +45,18 @@ export const AZOR_API_INTERACTION_TYPES = ['gift'] as const
 export type AzorApiInteractionType = (typeof AZOR_API_INTERACTION_TYPES)[number]
 
 // ---------------------------------------------------------------------------
+// Link sources (which external systems can bind to a game account)
+// ---------------------------------------------------------------------------
+//
+// Strictly narrower than `AZOR_API_SOURCE_TYPES` — `admin` and `system` are
+// synthetic actors for interaction provenance, never linked identities.
+// MUST equal the SQL ENUM on `mod_azor_api_account_links.external_source`
+// and the `kLinkSources` array in C++.
+
+export const AZOR_API_LINK_SOURCES = ['discord', 'website'] as const
+export type AzorApiLinkSource = (typeof AZOR_API_LINK_SOURCES)[number]
+
+// ---------------------------------------------------------------------------
 // Error codes
 // ---------------------------------------------------------------------------
 //
@@ -60,6 +72,10 @@ export const AZOR_API_ERROR_CODES = {
 	// Stage 3 — `character interact` failure modes.
 	cooldown: 'cooldown',
 	minLevel: 'min_level',
+	// Stage 5 — `link {begin,confirm,status}` failure modes.
+	expired: 'expired',
+	alreadyLinked: 'already_linked',
+	unauthorized: 'unauthorized',
 } as const
 
 export type AzorApiErrorCode = (typeof AZOR_API_ERROR_CODES)[keyof typeof AZOR_API_ERROR_CODES]
@@ -175,6 +191,46 @@ export interface AzorApiCharacterHistoryData {
 	interactionType: AzorApiInteractionType | null
 	/** Newest-first. */
 	interactions: AzorApiCharacterHistoryRow[]
+}
+
+// ---------------------------------------------------------------------------
+// Response payload types — Stage 5 account linking
+// ---------------------------------------------------------------------------
+
+/** Returned by `.azor api link begin`. */
+export interface AzorApiLinkBeginData {
+	/** 8-char lowercase hex code the client supplied (echoed back for callers
+	 * that fire-and-forget; identical to the input on success). */
+	code: string
+	externalSource: AzorApiLinkSource
+	externalId: string
+	/** Epoch ms when the pending row was created. */
+	createdAt: number
+	/** Epoch ms after which the code is no longer redeemable. */
+	expiresAt: number
+	/** TTL applied (=expiresAt-createdAt). Surfaced so the client can format
+	 * "code valid for X minutes" without computing it. */
+	ttlMs: number
+}
+
+/** Returned by `.azor api link confirm` (in-game, by the redeeming player). */
+export interface AzorApiLinkConfirmData {
+	accountId: number
+	externalSource: AzorApiLinkSource
+	externalId: string
+	/** Epoch ms at the moment of confirmation. */
+	linkedAt: number
+}
+
+/** Returned by `.azor api link status`. */
+export interface AzorApiLinkStatusData {
+	externalSource: AzorApiLinkSource
+	externalId: string
+	/** True iff a confirmed binding exists. When false, `accountId` and
+	 * `linkedAt` are null. */
+	linked: boolean
+	accountId: number | null
+	linkedAt: number | null
 }
 
 // ---------------------------------------------------------------------------

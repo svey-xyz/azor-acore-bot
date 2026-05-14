@@ -1,16 +1,24 @@
 import { ChatInputCommandInteraction } from "discord.js";
-import { SubCommand } from "@azor/subCommand";
+import { isAzorApiOk } from "@azor/shared";
+import { azorApiClient } from "@azor/lib/azorApiClient";
 import { formatter, ORM_OBJECTS } from "@azor/lib/formatter";
-import { DB_HANDLER } from "@azor/lib/db";
+import { SubCommand } from "@azor/subCommand";
 
 export const online: SubCommand = {
 	async execute(commandInteraction: ChatInputCommandInteraction) {
-		const realm = DB_HANDLER.getRealm();
-		const characters = await realm.onlineCharacters;
+		const env = await azorApiClient.realmOnline();
 
-		const reply = formatter[ORM_OBJECTS.REALM]({ args: { characters, format: 'online'}});
-		
-		commandInteraction.reply({ content: reply, ephemeral: false });
+		if (!isAzorApiOk(env)) {
+			await commandInteraction.reply({
+				content: `Failed to fetch online characters: ${env.error.message}`,
+				ephemeral: true,
+			});
+			return;
+		}
+
+		const reply = formatter[ORM_OBJECTS.REALM]({
+			args: { characters: env.data.characters, format: 'online' },
+		});
+		await commandInteraction.reply({ content: reply, ephemeral: false });
 	},
 }
-

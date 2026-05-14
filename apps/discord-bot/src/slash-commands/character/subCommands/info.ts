@@ -1,24 +1,21 @@
 import { ChatInputCommandInteraction } from "discord.js";
-import { DB_HANDLER } from "@azor/lib/db";
+import { isAzorApiOk } from "@azor/shared";
+import { azorApiClient } from "@azor/lib/azorApiClient";
 import { formatter, ORM_OBJECTS } from "@azor/lib/formatter";
+import { SubCommand } from "@azor/subCommand";
 
-export const info = {
-	async execute(commandInteraction: ChatInputCommandInteraction<undefined>) {
+export const info: SubCommand = {
+	async execute(commandInteraction: ChatInputCommandInteraction) {
 		const username = commandInteraction.options.getString("username", true);
-		
-		try {
-			const character = await DB_HANDLER.getCharacter({ username })
-			
-			// Handle promise resolution
-			const reply = formatter[ORM_OBJECTS.CHARACTER]({ args: { character, format: 'info' } });
-			commandInteraction.reply({ content: reply, ephemeral: false });
-		} catch(error) {
-			// Handle promise rejection
-			console.error("Promise rejected:", error);
-			commandInteraction.reply({ content: `Character ${username} not found.`, ephemeral: true });
 
+		const env = await azorApiClient.characterGet(username);
+
+		if (!isAzorApiOk(env)) {
+			await commandInteraction.reply({ content: `Character ${username} not found.`, ephemeral: true });
+			return;
 		}
-		
+
+		const reply = formatter[ORM_OBJECTS.CHARACTER]({ args: { character: env.data, format: 'info' } });
+		await commandInteraction.reply({ content: reply, ephemeral: false });
 	},
 }
-

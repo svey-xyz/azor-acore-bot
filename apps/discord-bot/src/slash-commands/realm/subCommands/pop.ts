@@ -1,16 +1,24 @@
 import { ChatInputCommandInteraction } from "discord.js";
+import { isAzorApiOk } from "@azor/shared";
+import { azorApiClient } from "@azor/lib/azorApiClient";
 import { SubCommand } from "@azor/subCommand";
-import { formatter, ORM_OBJECTS } from "@azor/lib/formatter";
-import { DB_HANDLER } from "@azor/lib/db";
 
 export const pop: SubCommand = {
 	async execute(commandInteraction: ChatInputCommandInteraction) {
+		// `realm population` is the cheap variant — server returns just `{ online: N }`.
+		const env = await azorApiClient.realmPopulation();
 
-		const realm = DB_HANDLER.getRealm();
-		const characters = await realm.onlineCharacters;
-		const reply = formatter[ORM_OBJECTS.REALM]({ args: { characters, format: 'pop'}});
-		
-		commandInteraction.reply({ content: reply, ephemeral: false });
+		if (!isAzorApiOk(env)) {
+			await commandInteraction.reply({
+				content: `Failed to fetch realm population: ${env.error.message}`,
+				ephemeral: true,
+			});
+			return;
+		}
+
+		await commandInteraction.reply({
+			content: `**Realm Online Count: ** ${env.data.online}`,
+			ephemeral: false,
+		});
 	},
 }
-

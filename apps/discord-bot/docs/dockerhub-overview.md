@@ -6,11 +6,14 @@ Discord bot that bridges an [AzerothCore](https://www.azerothcore.org) WoW priva
 - **License:** ISC
 - **Architectures:** `linux/amd64`, `linux/arm64`
 
+## Architecture in one breath
+
+The bot does not connect to AzerothCore's MySQL databases. All AzerothCore reads and writes go over SOAP to the **`mod-azor-api`** server module. The bot only opens MySQL connections to its **own** schema (`azor_bot`) for Discord-side state — give that MySQL user grants on `azor_bot` only.
+
 ## Configuration model
 
-- **`.env`** holds secrets and endpoints (Discord token, SOAP, MySQL, SSH).
+- **`.env`** holds secrets and endpoints: Discord token, SOAP credentials (the bot's only AzerothCore transport), and MySQL credentials for the bot-owned `azor_bot` schema.
 - **`/config/azor.config.json`** holds non-secret behaviour (gift item, cooldowns, announcements, enabled commands). The image ships sensible defaults — mount your own file only if you want to override them.
-- **`/config/ssh_key`** (optional) is read when `SSH_TUNNEL_ENABLED=true`. Drop it in the same `/config` mount as the JSON file.
 
 ## Quick start
 
@@ -43,7 +46,7 @@ networks:
     external: true
 ```
 
-Drop this onto the same Docker network as your AzerothCore stack and the bot will reach the worldserver (SOAP) and MySQL by service name.
+Drop this onto the same Docker network as your AzerothCore stack and the bot will reach the worldserver (SOAP) and the MySQL host that owns `azor_bot` by service name.
 
 ## Tags
 
@@ -60,30 +63,21 @@ Drop this onto the same Docker network as your AzerothCore stack and the bot wil
 |---|---|
 | `DISCORD_TOKEN` | Bot token |
 | `DISCORD_CLIENT_ID` | Application ID |
-| `SOAP_ENDPOINT` / `SOAP_PORT` | AzerothCore SOAP host + port |
+| `SOAP_ENDPOINT` / `SOAP_PORT` | AzerothCore SOAP host + port (the bot's only AzerothCore transport) |
 | `SOAP_USER` / `SOAP_PASSWORD` | SOAP admin credentials |
-| `MYSQL_ENDPOINT` / `MYSQL_PORT` | AzerothCore MySQL host + port |
-| `MYSQL_USER` / `MYSQL_PASSWORD` | MySQL credentials (read-only recommended) |
+| `MYSQL_ENDPOINT` / `MYSQL_PORT` | MySQL host + port for the bot-owned `azor_bot` schema |
+| `MYSQL_USER` / `MYSQL_PASSWORD` | MySQL credentials (must have grants on `azor_bot` only — no `acore_*` grants) |
 
-Optional env vars for SSH tunneling (`SSH_TUNNEL_ENABLED`, `SSH_HOST`, `SSH_PORT`, `SSH_USER`, `SSH_PRIVATE_KEY_PATH`, `MYSQL_REMOTE_HOST`, `SSH_TUNNEL_LOCAL_PORT`) and config file overrides (`AZOR_CONFIG_PATH`) are documented in the [README](https://github.com/svey-xyz/azor-acore-bot#readme).
+Config file overrides (`AZOR_CONFIG_PATH`, `AZOR_BOT_MYSQL_DATABASE`) and behaviour overrides are documented in the [README](https://github.com/svey-xyz/azor-acore-bot#readme).
 
-## SSH tunnel
-
-When `SSH_TUNNEL_ENABLED=true` the bot opens an SSH connection to `SSH_HOST` and forwards `127.0.0.1:SSH_TUNNEL_LOCAL_PORT` → `MYSQL_REMOTE_HOST:MYSQL_PORT` on the remote machine, so MySQL never needs to be reachable over the network.
-
-1. Mount your private key at `./config/ssh_key` (chmod 600).
-2. On the AzerothCore host, add the matching public key with locked-down `authorized_keys` options:
-   ```
-   restrict,port-forwarding,permitopen="127.0.0.1:3306" ssh-ed25519 AAAA…
-   ```
-3. Bind MySQL to `127.0.0.1` so it's only reachable through the tunnel.
+> Need MySQL behind a tunnel? Run the tunnel **outside** the container (`autossh`, k8s sidecar, host-level `ssh -L`) and point `MYSQL_ENDPOINT` at the local end. The bot dropped its bundled SSH client in Stage 4 once direct AzerothCore reads were retired.
 
 ## Security notes
 
 - Runs as non-root (`bun` user, UID 1000).
 - `tini` is PID 1 — `docker stop` cleanly shuts the Discord client down.
-- The bot needs **read-only** MySQL access; all writes go through SOAP.
-- Treat `DISCORD_TOKEN` / `SOAP_PASSWORD` / the SSH key as secrets — use `--env-file`, Docker secrets, or your orchestrator's secret store, and mount `/config` read-only.
+- All AzerothCore reads and writes go through SOAP → `mod-azor-api`. The MySQL user the bot uses must have grants on `azor_bot` only — **never on `acore_*`**.
+- Treat `DISCORD_TOKEN` / `SOAP_PASSWORD` / `MYSQL_PASSWORD` as secrets — use `--env-file`, Docker secrets, or your orchestrator's secret store, and mount `/config` read-only.
 
 ## Issues & contributions
 

@@ -44,11 +44,17 @@ bun --filter @azor/bot add <pkg>              # add a dep to a specific workspac
 
 - **TypeScript-first.** Every TS package extends `tsconfig.base.json`. Bun runs `.ts` directly; only `@azor/shared` emits `.d.ts` when built explicitly.
 - **No project references yet.** Cross-package imports work through Bun's workspace symlinks and each package's `exports` map (source-only for `@azor/shared`).
-- **Path aliases stay package-local.** The bot's `@azor/*`, `@azor.lib/*`, `@azor.server/*`, etc. resolve only inside `apps/discord-bot/`. Outside that package use the workspace name (`@azor/shared`).
+- **Path aliases stay package-local.** The bot's `@azor/*`, `@azor.lib/*`, etc. resolve only inside `apps/discord-bot/`. Outside that package use the workspace name (`@azor/shared`).
 - **Shared first.** Anything consumed by both the bot and the server module (DB column names, command verbs, version constants) belongs in `packages/shared` — not duplicated.
 - **Env at the edge.** Only `apps/discord-bot/` reads env vars. `packages/shared` must remain pure (no `process.env`).
 - **Docker context = repo root.** The bot's `Dockerfile` lives at `apps/discord-bot/Dockerfile` but the build context is the monorepo root so it can reach the hoisted `bun.lock` + every workspace manifest. CI passes `file: apps/discord-bot/Dockerfile`.
 - **C++ module is not an npm package.** `packages/server-module/` has no `package.json` and Bun workspaces ignore it. Build via AzerothCore's CMake.
+
+## Architecture rule: AzerothCore DB is private to the module
+
+External consumers (the bot today, a website or any future client) **must not connect directly to the AzerothCore databases** (`acore_auth`, `acore_characters`, `acore_world`). All reads and writes that touch AzerothCore state flow through `mod-azor-api` — SOAP today, optional HTTP later, same JSON envelope either way.
+
+Consumers may own their own MySQL schema for app-specific state (the bot does this with `azor_bot`). That schema must live in its own database and never reference AzerothCore tables.
 
 ## Cross-package work
 

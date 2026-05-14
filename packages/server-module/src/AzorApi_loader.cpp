@@ -13,10 +13,12 @@
 void AddAzorApiCommandScript();
 void AddAzorApiWorldScript();
 void AddAzorApiPlayerScript();
+void AddAzorApiAccountScript();
 
 void AddAzorApiScripts()
 {
     AddAzorApiWorldScript();
     AddAzorApiCommandScript();
     AddAzorApiPlayerScript();
+    AddAzorApiAccountScript();
 }

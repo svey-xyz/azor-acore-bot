@@ -3,12 +3,13 @@
 #   cp docker-compose.example.yml docker-compose.yml
 #   cp .env.example .env             # then fill in secrets/endpoints
 #   # optional: tweak ./config/azor.config.json
-#   # optional: drop your SSH private key at ./config/ssh_key (chmod 600)
 #   docker compose up -d
 #
 # Drop the resulting container onto the same Docker network as your
-# AzerothCore worldserver/authserver/MySQL stack so SOAP_ENDPOINT and
-# MYSQL_ENDPOINT can resolve service names.
+# AzerothCore worldserver and the MySQL host that owns `azor_bot` so
+# SOAP_ENDPOINT and MYSQL_ENDPOINT can resolve service names. The bot
+# never connects to acore_* — all AzerothCore reads/writes go through
+# SOAP to the mod-azor-api server module.
 
 services:
   azor:
@@ -21,11 +22,9 @@ services:
     env_file:
       - .env
     volumes:
-      # Holds:
-      #   - azor.config.json  (behaviour: gift, announcements, enabled commands)
-      #   - ssh_key           (SSH private key, only when SSH_TUNNEL_ENABLED=true)
-      # The image ships sensible defaults, so the file is optional —
-      # mount this volume only when you want to override them.
+      # Holds azor.config.json (behaviour: gift, announcements, enabled
+      # commands). The image ships sensible defaults, so this mount is
+      # optional — mount it only when you want to override them.
       - ./config:/config:ro
     # Sane resource defaults — tune to taste.
     deploy:

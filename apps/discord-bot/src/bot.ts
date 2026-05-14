@@ -1,27 +1,23 @@
 import { Client, Collection, Events, GatewayIntentBits, MessageFlags } from "discord.js";
 import { DISCORD_TOKEN } from "@azor.lib/conf.env";
-import { SSH_TUNNEL_ENABLED } from "@azor.lib/ssh.env";
-import { createSSHTunnel } from "@azor.lib/sshTunnel";
+import { closeBotDb } from "@azor/lib/botDb";
 import { Command } from "@azor/command";
+import { account } from "@azor/slash-commands/account/account";
 import { character } from "@azor/slash-commands/character/character";
 import { realm } from "@azor/slash-commands/realm/realm";
 
 const COMMANDS: Array<Command> = [
 		character,
-		realm
+		realm,
+		account,
 	// Add other commands here as needed
 	]
 
 async function main() {
-	// ── SSH tunnel ──────────────────────────────────────────────────────────
-	// Must be established before client.login() so MYSQL_CONFIG is patched
-	// before the first MySQL connection is created (connections are lazy).
-	let closeTunnel: (() => void) | undefined;
-
-	if (SSH_TUNNEL_ENABLED) {
-		console.log('[SSH Tunnel] Initialising…');
-		closeTunnel = await createSSHTunnel();
-	}
+	// Stage 4 (2026-05-13): the bot no longer connects to `acore_*` MySQL, so
+	// the optional SSH tunnel is gone. All AzerothCore traffic now flows
+	// through SOAP (`azorApiClient`). If a deployment puts the bot's own
+	// `azor_bot` MySQL behind SSH, reach for an external tunnel.
 
 	// ── Discord client ──────────────────────────────────────────────────────
 	const client = new Client({
@@ -67,7 +63,8 @@ async function main() {
 	// ── Graceful shutdown ───────────────────────────────────────────────────
 	const shutdown = (signal: string) => {
 		console.log(`\nReceived ${signal} — shutting down…`);
-		closeTunnel?.();
+		// Bot DB pool close is best-effort; don't block exit.
+		void closeBotDb().catch((err) => console.error('[botDb] close failed:', err));
 		client.destroy();
 		process.exit(0);
 	};

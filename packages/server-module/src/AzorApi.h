@@ -35,6 +35,20 @@ namespace AzorApi
         // `MinLevel` is returned when the target is below `<type>.min_level`.
         inline constexpr std::string_view Cooldown      = "cooldown";
         inline constexpr std::string_view MinLevel      = "min_level";
+
+        // Stage 5 — account ↔ external identity linking.
+        // `Expired`        — pending claim code has aged out past
+        //                    `mod_azor_api_config.link.pending_ttl_ms`.
+        // `AlreadyLinked`  — the (external_source, external_id) is already
+        //                    bound to an account; rebinding requires unlink
+        //                    (not in v1).
+        // `Unauthorized`   — `link confirm` was called without an in-game
+        //                    player session (e.g. via SOAP/console). Confirm
+        //                    is a player-only command — only a logged-in
+        //                    character's account can claim a code.
+        inline constexpr std::string_view Expired       = "expired";
+        inline constexpr std::string_view AlreadyLinked = "already_linked";
+        inline constexpr std::string_view Unauthorized  = "unauthorized";
     }
 }
 

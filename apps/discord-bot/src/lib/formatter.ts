@@ -1,4 +1,13 @@
-import { Character } from "@azor.ORM/Character";
+import type { AzorApiCharacterSnapshot } from "@azor/shared";
+import { AcoreTypeMaps } from "@azor/lib/typeMaps";
+
+/**
+ * Stage 4 (2026-05-13): the bot now consumes `mod-azor-api` exclusively, so
+ * the formatter takes `AzorApiCharacterSnapshot` straight from the API
+ * envelope. The old `Character`/`Item`/`Realm` ORM and the `_character` row
+ * shape are gone. `AcoreTypeMaps` (race/class/gender/zone display strings)
+ * is all that survived; it now lives at `src/lib/typeMaps.ts`.
+ */
 
 export const formatBankMoney = (bankString: string): string => {
 	return bankString === '0 gold' ? 'No gold' : bankString;
@@ -17,42 +26,46 @@ Info: ${guild.info}
 `.trim();
 }
 
-const CharacterInfo = (character: Character): string => {
+const CharacterInfo = (character: AzorApiCharacterSnapshot): string => {
 	return `
 **Character Information**
 Name: ${character.name}
 Level: ${character.level}
-Race: ${character.race}
-Class: ${character.class}
-Gender: ${character.gender}
+Race: ${AcoreTypeMaps.raceName(character.race)}
+Class: ${AcoreTypeMaps.className(character.class)}
+Gender: ${AcoreTypeMaps.genderName(character.gender)}
 `.trim();
 }
 
-const CharacterLocation = (character: Character): string => {
+const CharacterLocation = (character: AzorApiCharacterSnapshot): string => {
 	if (character.online === false) return `**Character Location**\n${character.name} is currently offline.`;
-	if (!character.zone) return `**Character Location**\n${character.name} data not available.`;
+	// zoneId 0 ≈ "no usable zone" (in-limbo / unloaded); preserve the legacy
+	// behaviour of treating it as "data not available" rather than the
+	// fallback "Unknown Zone" string.
+	if (!character.zoneId) return `**Character Location**\n${character.name} data not available.`;
+	const zone = AcoreTypeMaps.zoneName(character.zoneId);
 	return `
 **${character.name}'s Location**
-Zone: ${character.zone}
+Zone: ${zone}
 `.trim();
 }
 
-const CharacterStatus = (character: Character): string => {
+const CharacterStatus = (character: AzorApiCharacterSnapshot): string => {
 	return `
 **Character Status**
 Online: ${character.online ? "Yes" : "No"}
 `.trim();
 }
 
-const RealmOnlineCharacters = (characters: Character[]): string => {
+const RealmOnlineCharacters = (characters: AzorApiCharacterSnapshot[]): string => {
 	return characters.length === 0
 		? "No characters are currently online."
 		:
 `**Online Characters**
-${characters.map(c => `${c.name}\n`)}`
+${characters.map(c => `${c.name}\n`).join('')}`
 }
 
-const RealmPop = (characters: Character[]): string => {
+const RealmPop = (characters: AzorApiCharacterSnapshot[]): string => {
 	return `**Realm Online Count: ** ${characters.length}`
 }
 
@@ -82,11 +95,11 @@ const ObjectFormatFns = {
 
 type formatArgs = {
 	[ORM_OBJECTS.CHARACTER]: {
-		character: Character,
+		character: AzorApiCharacterSnapshot,
 		format: ObjectFormatOptions[ORM_OBJECTS.CHARACTER],
 	},
 	[ORM_OBJECTS.REALM]: {
-		characters: Character[],
+		characters: AzorApiCharacterSnapshot[],
 		format: ObjectFormatOptions[ORM_OBJECTS.REALM],
 	}
 }

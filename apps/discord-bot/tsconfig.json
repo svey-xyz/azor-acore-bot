@@ -11,9 +11,7 @@
 		"paths": {
 			"@azor.types/*": ["@types/*"],
 			"@azor/*": ["src/*"],
-			"@azor.server/*": ["server/*"],
 			"@azor.lib/*": ["lib/*"],
-			"@azor.ORM/*": ["src/lib/ORM/*"],
 			"@azor.slash-commands/*": ["src/slash-commands/*"]
 		}
 	},
