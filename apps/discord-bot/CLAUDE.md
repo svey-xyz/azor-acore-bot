@@ -13,13 +13,17 @@ src/
   subCommand.ts             — SubCommand interface
   slash-commands/
     account/                — /account {link,whoami}        (Stage 5)
+    admin/                  — /admin {grant-credits}         (Stage 6, adminOnly-gated)
     character/              — /character {info,location,status,gift}
     realm/                  — /realm {online,pop}
   lib/
     azorApiClient.ts        — SOAP client for `mod-azor-api` (the bot's only AC transport)
     botDb.ts                — Pool + DAO for the bot-owned `azor_bot` MySQL database
+    giftPolicy.ts           — Stage 6 sender-side gift policy (credits + per-user cooldown)
     formatter.ts            — Discord-output helpers (operate on AzorApiCharacterSnapshot)
     typeMaps.ts             — race/class/gender/zone id → display string (formerly ORM/AcoreTypeMaps.ts)
+  permissions/
+    commandPermissions.ts   — `adminOnly` role gate (used by /admin)
 @types/
   global.d.ts               — Augments discord.js Client with `commands` collection
 lib/
@@ -33,7 +37,9 @@ lib/
 After Stage 4 (2026-05-13) the bot has exactly two outbound surfaces:
 
 - **SOAP** via `azorApiClient` → `mod-azor-api`. The bot's *only* transport for anything AzerothCore-related (reads + writes + linking). The bot must never open a connection to `acore_auth` / `acore_characters` / `acore_world` directly.
-- **MySQL** via `botDb` for the bot-owned `azor_bot` database only (pending claim codes today; Stage 6 will add `discord_users`). `azor_bot` is a separate schema with no FKs into AzerothCore tables; operators should provision a MySQL user that has grants on `azor_bot` only.
+- **MySQL** via `botDb` for the bot-owned `azor_bot` database only (`pending_account_links` from Stage 5; `discord_users` — sender-side gift credits/cooldowns — from Stage 6). `azor_bot` is a separate schema with no FKs into AzerothCore tables; operators should provision a MySQL user that has grants on `azor_bot` only.
+
+**Gift flow (Stage 6).** `/character gift` enforces two layers: (1) bot-side `giftPolicy.evaluateGiftPolicy` — credits + per-Discord-user cooldown, rejecting out-of-credit/on-cooldown users before any SOAP call; (2) module-side — per-character cooldown + min-level, atomic in `mod-azor-api`. A credit is consumed (and the per-user cooldown stamped) only *after* the module confirms, via the atomic `recordGiftSpend`. Operators top users up with `/admin grant-credits`.
 
 **Data flow:** Discord interaction → `bot.ts` → `command.execute()` → subcommand handler → `azorApiClient` (or `botDb` for bot-owned state) → formatted Discord reply.
 
@@ -135,7 +141,8 @@ Bot OAuth URL: `https://discord.com/api/oauth2/authorize?client_id=<DISCORD_CLIE
 
 ## Known Issues / Roadmap
 
-- Role-based command restrictions not yet implemented (`commandPermissions.ts` has `adminOnly` helper ready)
+- `adminOnly` (`permissions/commandPermissions.ts`) is wired into `/admin` (Stage 6) but no other command is role-gated yet; the helper assumes a guild context (`interaction.member` is null in DMs).
+- The per-Discord-user gift cooldown reuses `CONFIG.gift.cooldownMs` as its default window (same knob as the module's per-character cooldown). If the two need to diverge, add a dedicated `gift.userCooldownMs` config key — `giftPolicy.effectiveCooldownMs` is the single place to change.
 - `conf.env.ts` uses `require('dotenv')` (CJS-style) — migrate to `import 'dotenv/config'`
 - `baseUrl` in tsconfig is deprecated in TS 6; plan migration before TS 7
 - No test suite yet

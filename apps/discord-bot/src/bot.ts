@@ -3,6 +3,7 @@ import { DISCORD_TOKEN } from "@azor.lib/conf.env";
 import { closeBotDb } from "@azor/lib/botDb";
 import { Command } from "@azor/command";
 import { account } from "@azor/slash-commands/account/account";
+import { admin } from "@azor/slash-commands/admin/admin";
 import { character } from "@azor/slash-commands/character/character";
 import { realm } from "@azor/slash-commands/realm/realm";
 
@@ -10,6 +11,7 @@ const COMMANDS: Array<Command> = [
 		character,
 		realm,
 		account,
+		admin,
 	// Add other commands here as needed
 	]
 

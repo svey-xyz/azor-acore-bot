@@ -1,142 +1,133 @@
 # AZOR Platform — Development Plan
 
-## Current status (2026-05-13)
+## Current status (2026-05-14)
 
-**Shipped:** Stage 4 — bot read-path migration. The bot now reaches
-AzerothCore *exclusively* through `mod-azor-api` over SOAP. No more direct
-reads against `acore_*`; the only MySQL surface left is the bot-owned
-`azor_bot` database via `botDb`.
+**Shipped:** Stage 6 — Discord-user policy. The bot now enforces per-Discord-user
+gift credits + a per-user cooldown *before* calling the module's
+`character interact`; `/admin grant-credits` lets operators top users up.
 
-> Stage 5 (account ↔ external-identity linking) and Stage 3 (interactions +
-> gift) shipped in earlier sessions — their notes have been compacted into
-> the per-stage sections below. The full Stage 5 changelog is preserved in
-> git history.
+> Stages 2–5 shipped in earlier sessions. Their notes are compacted into the
+> per-stage sections under "## Stages" below; full changelogs live in git
+> history.
 
-### Stage 4 — what landed (this session)
+### Stage 6 — what landed (this session)
 
 Bot (`apps/discord-bot/`):
-- `src/lib/azorApiClient.ts` — expanded from the Stage 3 one-method surface.
-  New methods: `version`, `realmPopulation`, `realmOnline({limit?,offset?})`,
-  `characterGet`, `characterLocation`, `characterStatus`, `characterCooldown`,
-  `characterHistory({name,type?,limit?})`. All built on the same
-  `executeAzorApiCommand<T>` helper. Defensive client-side validation for
-  enum args + non-negative integers; the module re-validates server-side.
-- `src/slash-commands/character/subCommands/{info,location,status}.ts` — now
-  call `azorApiClient.characterGet` directly and hand the
-  `AzorApiCharacterSnapshot` straight to the formatter. Each handler is ~15
-  lines.
-- `src/slash-commands/realm/subCommands/online.ts` — calls
-  `azorApiClient.realmOnline()` (uses the module's default limit).
-- `src/slash-commands/realm/subCommands/pop.ts` — calls the cheap
-  `realmPopulation` endpoint (`{online: N}` only).
-- `src/lib/formatter.ts` — rewritten to operate on
-  `AzorApiCharacterSnapshot`. The legacy `Character`/`Item` rendering paths
-  are gone. Preserves the legacy "zone 0 = data not available" behaviour.
-- `src/lib/botDb.ts` — no longer imports from `@azor.lib/mysqlConfig`; reads
-  `MYSQL_*` directly from `@azor.lib/conf.env`. Otherwise unchanged.
-- `src/bot.ts` — stripped the SSH-tunnel block. Startup is just env-load →
-  Discord client → graceful shutdown that closes `botDb`.
-- `lib/conf.env.ts` — kept `MYSQL_*` (still needed by `botDb`) with an
-  updated header explaining the narrowed scope. SOAP/Discord vars unchanged.
-- `package.json` — dropped `ssh2`, `@types/ssh2`, `@types/mysql`, `soap`.
-  Kept `mysql2` (botDb still depends on it). No new deps added.
-
-  (`AcoreTypeMaps.ts` survives — it's still used by the formatter to render
-  race/class/gender/zone id → display string)
+- `src/lib/botDb.ts` — added `discord_users` to `BOT_DB_SCHEMA` (lazy
+  `CREATE TABLE IF NOT EXISTS`, same idempotent path as `pending_account_links`).
+  New DAO: `getDiscordUser`; `grantGiftCredits` (upsert + increment, balance
+  floored at 0 via `GREATEST`); `recordGiftSpend` (atomic
+  `UPDATE … WHERE gift_credits > 0` — the single point of truth against
+  double-spend).
+- `src/lib/giftPolicy.ts` — new. `evaluateGiftPolicy(discordUserId)` is the
+  pure-read sender-side gate: credits + per-user cooldown. Cooldown window =
+  `discord_users.cooldown_override_ms` if set, else `CONFIG.gift.cooldownMs`.
+  Also exports `humaniseMs`.
+- `src/slash-commands/character/subCommands/gift.ts` — rewritten. Policy gate
+  runs before any SOAP call (out-of-credit / on-cooldown users never hit the
+  module). Confirmation is now an `EmbedBuilder` surfacing both timers
+  (per-user + per-character; the per-character figure comes from a
+  `characterCooldown` read probe). Policy is re-checked at confirm time (the
+  60s button window). On module success, `recordGiftSpend` consumes a credit +
+  stamps the per-user cooldown.
+- `src/slash-commands/admin/` — new command tree. `/admin grant-credits
+  <user> <amount>`, gated by `adminOnly`; `amount` may be negative to deduct.
+  `commandData.ts` also sets `setDefaultMemberPermissions(0)` (cosmetic
+  client-side hide — `adminOnly` is the authoritative gate).
+- `src/bot.ts` — `admin` added to the `COMMANDS` array.
 
 Docs:
-- `apps/discord-bot/CLAUDE.md` — rewritten to match the new architecture.
+- `apps/discord-bot/CLAUDE.md` — architecture tree, gift-flow note, and
+  known-issues section updated.
+
+### Acceptance status
+
+Criterion: *out-of-credit users get a clean rejection without hitting the
+module; admins can grant credits; both cooldowns enforced.*
+
+- ✅ Out-of-credit / on-cooldown rejection happens in `evaluateGiftPolicy`
+  before any `azorApiClient` call.
+- ✅ `/admin grant-credits` upserts `discord_users` and reports the new balance.
+- ✅ Both cooldowns enforced — per-user by the bot (`giftPolicy` +
+  `recordGiftSpend`), per-character by the module — and both are surfaced in
+  the confirmation / success embeds.
+- ⚠️ `bun run typecheck` not run (Bun unavailable in this environment, as in
+  the Stage 4 session). Typechecked instead with the workspace `tsc`:
+  `node node_modules/typescript/bin/tsc -p apps/discord-bot/tsconfig.json
+  --noEmit` → exit 0. `packages/shared` untouched this stage.
+- ⚠️ Not exercised against a live worldserver / MySQL — see deferred.
+
+### What was deferred / not done
+
+1. **No live run.** Credit spend, the `discord_users` lazy DDL, and the
+   `characterCooldown` embed probe weren't exercised against a real `azor_bot`
+   MySQL or worldserver. Verify: `/admin grant-credits` on a fresh user (row
+   created lazily), `/character gift` with 0 credits (early reject), with 1
+   credit (spend + cooldown stamp), and that the dual-timer embed renders.
+2. **Per-user cooldown default reuses `CONFIG.gift.cooldownMs`.** The PLAN gave
+   `discord_users.cooldown_override_ms` but no separate default key, so the
+   per-user window defaults to the same knob as the module's per-character
+   cooldown. If they must diverge, add `gift.userCooldownMs` to `config.ts` and
+   change `giftPolicy.effectiveCooldownMs` (the single resolution point).
+3. **Double-spend race is logged, not prevented end-to-end.** `recordGiftSpend`
+   is atomic, but if it returns `false` *after* a successful module call (the
+   credit was spent concurrently inside the 60s confirm window) the gift is
+   delivered un-billed — logged, not rolled back. Acceptable: the worldserver
+   is single-threaded and the module is the side-effecting authority. Revisit
+   if a second writer appears (Stage 7 HTTP).
+4. **No `/admin` for cooldown overrides or balance inspection.**
+   `cooldown_override_ms` can only be set via direct SQL; there's no
+   `/admin set-cooldown` or read-only `/admin credits <user>`. Out of scope for
+   the Stage 6 acceptance bar.
+5. **Command registration.** No deploy / register-commands script exists in the
+   repo — `/admin` is in the runtime `COMMANDS` array, but pushing the new
+   command *definition* to Discord is still a manual / external step.
 
 ### Architecture rule (load-bearing)
 
 **No external consumer connects directly to the AzerothCore databases.**
 Every read and write that touches `acore_auth` / `acore_characters` /
-`acore_world` flows through `mod-azor-api` — SOAP today, optional HTTP
-later (Stage 7), same JSON envelope either way. Consumers may own their
-own MySQL schema for app-specific state (the bot does this with
-`azor_bot`); that schema must live in a separate database with no FKs
-into AzerothCore tables, and its MySQL user must have **no grants on
-`acore_*`**.
-
-### Acceptance status
-
-Acceptance criterion from PLAN.md:
-> bot starts without MySQL credentials; all `/character` and `/realm`
-> commands work; `bun run build` produces a smaller bundle.
-
-Notes:
-1. **MySQL credentials, reinterpreted.** The original criterion meant
-   "no credentials against `acore_*`." That bar is met: the bot has zero
-   code paths into the AzerothCore databases. It still requires
-   `MYSQL_ENDPOINT/USER/PASSWORD` for its own `azor_bot` schema, which is
-   covered by the architecture rule above — operators must provision a
-   MySQL user with grants on `azor_bot` only.
-2. **`/character` and `/realm` commands rewired.** Code paths exist
-   end-to-end; not exercised against a live worldserver in this session.
-3. **`bun run typecheck` passed** in this session via the workspace-hoisted
-   `tsc` binary (Bun itself was unavailable; node + tsc were). Both
-   `packages/shared` and `apps/discord-bot` produce zero diagnostics.
-
-### What was deferred / not done
-
-1. **End-to-end against live worldserver not exercised.** All new client
-   methods compile and the SOAP envelope hasn't changed since Stage 3, but
-   the response shapes for `version`/`realm.*`/`character.{get,location,status,
-   cooldown,history}` weren't round-tripped this session. Verify:
-   `/character info SomeOnlineChar`, `/realm online`, `/realm pop`. Watch
-   for: number vs string coercion on epoch-ms fields (`cooldownMs`,
-   `lastAt`); `zoneId === 0` rendering.
-2. **Performance.** Every `/character` command now does one SOAP round-trip
-   against the worldserver instead of a local MySQL read. Acceptable for
-   v1 (commands are user-initiated and infrequent), but if `/realm online`
-   ends up on a hot path consider caching `realmPopulation` for a few
-   seconds at the bot layer.
-
-### Resolved in follow-up cleanup (2026-05-13)
-
-- ✅ SSH-tunnel references stripped from `apps/discord-bot/README.md`,
-  `apps/discord-bot/docs/dockerhub-overview.md`, and
-  `apps/discord-bot/docker-compose.example.yml`. README/dockerhub now
-  state the architecture rule explicitly.
-- ✅ `@azor.server/*` path alias removed from `apps/discord-bot/tsconfig.json`
-  along with the (already-deleted) `server/` directory.
-- ✅ `AcoreTypeMaps.ts` moved out of the misnamed ORM directory:
-  `apps/discord-bot/src/lib/ORM/AcoreTypeMaps.ts` →
-  `apps/discord-bot/src/lib/typeMaps.ts`. `@azor.ORM/*` alias removed.
-- ✅ Architecture rule ("no consumer connects directly to AzerothCore
-  databases") documented in root `CLAUDE.md`, bot `CLAUDE.md`, bot
-  `README.md`, dockerhub-overview, and this PLAN.
+`acore_world` flows through `mod-azor-api` — SOAP today, optional HTTP later
+(Stage 7), same JSON envelope either way. Consumers may own their own MySQL
+schema for app-specific state (the bot does this with `azor_bot`); that schema
+must live in a separate database with no FKs into AzerothCore tables, and its
+MySQL user must have **no grants on `acore_*`**.
 
 ### Lockstep contract
 
-Unchanged from Stage 5. `packages/server-module/src/AzorApi.h`
-(`SCHEMA_VERSION`, `ErrorCodes::*`) and `packages/shared/src/index.ts`
-must match exactly; the new API client methods consume types that already
-existed in `@azor/shared`.
+Unchanged. Stage 6 is entirely bot-side — `discord_users` lives in the
+bot-owned `azor_bot` database, touched only by `botDb.ts`. No
+`packages/shared` or `packages/server-module` changes this stage. The contract
+itself: `packages/server-module/src/AzorApi.h` (`SCHEMA_VERSION`,
+`ErrorCodes::*`) and `packages/shared/src/index.ts` must still match exactly.
 
 ### Carry-over (still open)
 
 - Lockstep contract has no automatic drift check.
 - `payload_json` SOAP-side encoding is still untested in the wild.
-- The hand-rolled `Writer` in `AzorApiJson.h` still has no raw-passthrough
-  mode (Stage 7 future work).
-- Bot MYSQL user grant model: needs documented operator workflow for
-  granting INSERT/DELETE on `azor_bot` without granting on `acore_*`.
-- TOCTOU window between `link begin` checks and `InsertPending` — safe
-  today (worldserver single-threaded), revisit when Stage 7 HTTP lands.
+- The hand-rolled `Writer` in `AzorApiJson.h` still has no raw-passthrough mode
+  (Stage 7 future work).
+- Bot MYSQL user grant model: still needs a documented operator workflow for
+  granting on `azor_bot` (now **two** tables — `pending_account_links` +
+  `discord_users`) without granting on `acore_*`.
+- TOCTOU window between `link begin` checks and `InsertPending` — safe today
+  (worldserver single-threaded), revisit when Stage 7 HTTP lands.
 - No unlink endpoint (`link unlink`).
 - No bot-side display of pending codes in `/account whoami`.
-- `pending_account_links` schema created lazily on first connect; no
-  migration runner yet. Revisit when Stage 6 adds `discord_users`.
-- `/account link` UX assumes Discord DMs are open (ephemeral fallback in
-  place but degraded UX on guilds where DMs are commonly off).
+- `azor_bot` schema (`pending_account_links` + `discord_users`) is created
+  lazily by `botDb.ts` on first connect — no migration runner. Fine while the
+  bot owns its own DDL; revisit if a schema change ever needs a data backfill.
+- `/account link` UX assumes Discord DMs are open (ephemeral fallback in place
+  but degraded UX where DMs are off).
 - No rate limit on `/account link`.
+- Stage 4 read-path (`/character`, `/realm`) and Stage 5 linking still not
+  round-tripped against a live worldserver.
 
 ### Next
 
-Stage 6 (Discord-user policy) — see below. After Stage 6 the bot enforces
-per-Discord-user credits + cooldowns before calling the module's
-`character interact`, with `/admin grant-credits` for operator top-ups.
+Stage 7 — future work, no commitment (see the Stage 7 section). Nearest
+candidates: HTTP transport on the module; raw-JSON passthrough in the response
+writer.
 
 ## Vision
 
@@ -157,9 +148,9 @@ primitives (character info, realm online/population); `OnPlayerDelete` and
 (Stage 7) when a non-SOAP client needs it; same handlers, same contract.
 
 **`@azor/bot`** — pure consumer of the module API + Discord. Owns Discord-side
-state in its own `azor_bot` MySQL database. After Stage 4, no direct reads
-against `acore_*` — `azorApiClient` (SOAP → mod-azor-api) is the only AC
-transport.
+state in its own `azor_bot` MySQL database (`pending_account_links`,
+`discord_users`). No direct reads against `acore_*` — `azorApiClient`
+(SOAP → mod-azor-api) is the only AC transport.
 
 **`@azor/shared`** — TS contract consumed by every JS/TS client.
 
@@ -184,7 +175,9 @@ validated by module.
 | 5 | `link confirm <code>` | Player runs in-game; binds account to external identity (SEC_PLAYER, Console::No) | ✅ |
 | 5 | `link status <source> <external_id>` | Reverse lookup | ✅ |
 
-Stage 4 made all of the above reachable from `apps/discord-bot/src/lib/azorApiClient.ts` (except `link confirm`, which is intentionally in-game only).
+All of the above (except in-game-only `link confirm`) is reachable from
+`apps/discord-bot/src/lib/azorApiClient.ts`. Stage 6 added **no** new module
+commands — it consumes the existing `character interact` / `character cooldown`.
 
 ## Schemas
 
@@ -244,8 +237,11 @@ each `link begin` call.
 
 ### `azor_bot` (bot-owned)
 
+Both tables created lazily by `botDb.ts` (`BOT_DB_SCHEMA`) on first connect —
+no separate migration runner.
+
 ```sql
-CREATE TABLE `discord_users` (        -- Stage 6
+CREATE TABLE `discord_users` (         -- Stage 6 (live)
   `discord_user_id`      VARCHAR(64) NOT NULL,
   `gift_credits`         INT NOT NULL DEFAULT 0,
   `last_gift_at`         BIGINT UNSIGNED NOT NULL DEFAULT 0,
@@ -262,7 +258,9 @@ CREATE TABLE `pending_account_links` ( -- Stage 5 (live)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 ```
 
-Created lazily by `botDb.ts` on first connect — no separate migration runner.
+`discord_users` rows are created lazily: `grantGiftCredits` upserts;
+`recordGiftSpend` only ever touches rows that already exist (a user can't
+spend a credit they were never granted).
 
 ## Stages
 
@@ -273,36 +271,38 @@ Stage 3 replaced it with the module's audit table. No migration needed.
 
 ### Stage 2 — Module scaffold + read API ✅
 
-Done in earlier sessions. See module README.
+Done in earlier sessions. `version`, `realm.*`, `character.{get,location,
+status}` over SOAP. See module README.
 
 ### Stage 3 — Module interactions + bot gift migration ✅
 
 Gift flow end-to-end via module; cooldown/min-level enforced atomically by
-`mod-azor-api`; bot no longer carries gift state. Stage 1 migration n/a.
+`mod-azor-api`; bot no longer carries gift state. `character interact /
+cooldown / history` added.
 
-### Stage 4 — Bot read-path migration ✅ (this session)
+### Stage 4 — Bot read-path migration ✅
 
-See "Current status" block above for the exhaustive list.
+Bot reaches AzerothCore *exclusively* through `mod-azor-api` over SOAP — no
+direct `acore_*` reads. `azorApiClient` gained `version` / `realm.*` /
+`character.{get,location,status,cooldown,history}`; the `/character` and
+`/realm` subcommands and `formatter.ts` were rewritten onto
+`AzorApiCharacterSnapshot`; the SSH-tunnel and ORM/cache layers were removed;
+`ssh2` / `soap` deps dropped. The only MySQL surface left is the bot-owned
+`azor_bot` database via `botDb`. Full changelog in git history.
 
 ### Stage 5 — Identity linking ✅
 
-Account ↔ external-identity linking. `link begin/confirm/status` over SOAP
-+ in-game; bot-side `pending_account_links` mirror; account-deletion
-cleanup. Notable deviations from the original PLAN are documented in the
-"Carry-over" section above.
+Account ↔ external-identity linking. `link begin/confirm/status` over SOAP +
+in-game; bot-side `pending_account_links` mirror; account-deletion cleanup.
+Notable deviations are folded into "Carry-over" above.
 
-### Stage 6 — Discord-user policy (½ day)
+### Stage 6 — Discord-user policy ✅ (this session)
 
-- `discord_users` table (DDL above; added lazily by `botDb.ts`).
-- Sender-side cooldown + credits enforced in bot before calling
-  `character interact`.
-- `/admin grant-credits <user> <n>` slash command (role-gated via
-  `commandPermissions.adminOnly`).
-- Surface both timers (per-Discord-user, per-character) in the confirmation
-  embed.
-
-**Acceptance:** out-of-credit users get a clean rejection without hitting the
-module; admins can grant credits; both cooldowns enforced.
+`discord_users` table (lazy DDL in `botDb.ts`); sender-side credits +
+per-Discord-user cooldown enforced in the bot before `character interact`
+(`giftPolicy.ts`); `/admin grant-credits` for operator top-ups; the
+confirmation embed surfaces both the per-user and per-character timers. See
+"## Current status" above for the exhaustive list and the deferred items.
 
 ### Stage 7 — Future work (no commitment)
 
@@ -321,13 +321,21 @@ module; admins can grant credits; both cooldowns enforced.
   (`Writer::Raw`) and the history handler.
 - **Caching layer over `azorApiClient`** — only if a future flow turns a
   read into a hot path; v1 commands are user-initiated, infrequent.
+- **`/admin` surface for policy** — `set-cooldown` (write
+  `cooldown_override_ms`), read-only `credits <user>` inspection, and a
+  deploy/register-commands script so new commands reach Discord without a
+  manual step.
 
 ## Open decisions
 
-1. **Per-(character, source_type) cooldowns?** Today: one cooldown per
-   character per interaction type, across all sources. Stage 6 may revisit.
-2. **Linking required for gifting?** Today anyone on Discord can gift any
-   character. Open whether to gate gifting on a linked sender identity.
+1. **Per-(character, source_type) cooldowns?** The module still has one
+   cooldown per character per interaction type, across all sources. Stage 6
+   added an *orthogonal* per-Discord-user cooldown in the bot — it did not
+   touch the module's model. Still open whether the module's cooldown should
+   become source-aware.
+2. **Linking required for gifting?** Today anyone on Discord with credits can
+   gift any character. Open whether to gate gifting on a linked sender
+   identity (Stage 6 credits are a separate, complementary gate).
 3. **Monorepo or split repos?** Current: monorepo (keeps SQL migrations and
    API contract changes atomic). Reconsider only if the module needs to be
    reused by third parties.
