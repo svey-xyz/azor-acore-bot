@@ -15,5 +15,6 @@
 			"username": "xyz",
 			"password": "RkqLZDjQjw3j3XY8aP"
 		}
-	]
+	],
+	"cmake.sourceDirectory": "/Volumes/Storage/repos/azor-acore-bot/packages/server-module"
 }

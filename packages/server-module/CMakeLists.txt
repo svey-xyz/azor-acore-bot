@@ -25,7 +25,12 @@ AC_ADD_SCRIPT("${CMAKE_CURRENT_LIST_DIR}/src/AzorApiCommandScript.cpp")
 
 AC_ADD_SCRIPT_LOADER("AzorApi" "${CMAKE_CURRENT_LIST_DIR}/src/AzorApi_loader.h")
 
-# CopyModuleConfig stages the .conf.dist into the worldserver's config dir on
-# install. The legacy AC_ADD_CONFIG / AC_ADD_CONFIG_FILE macros are deprecated
-# no-ops in current AC.
-CopyModuleConfig("${CMAKE_CURRENT_LIST_DIR}/conf/mod_azor_api.conf.dist")
+# No config wiring is needed here. AzerothCore's modules/CMakeLists.txt globs
+# conf/*.conf.dist for every module and stages each one via CopyModuleConfig
+# itself — just keep conf/mod_azor_api.conf.dist in place and it gets installed.
+#
+# Do NOT call CopyModuleConfig from this file: it's defined in ConfigInstall.cmake,
+# which the root CMakeLists.txt only include()s *after* this module's CMakeLists
+# is processed (add_subdirectory in the modules/ loop runs earlier), so the
+# command isn't defined yet at this point. The legacy AC_ADD_CONFIG /
+# AC_ADD_CONFIG_FILE macros are deprecated no-ops in current AC.

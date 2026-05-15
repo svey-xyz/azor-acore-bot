@@ -91,6 +91,18 @@ table prefixes, no FK to `characters.guid`, `OnPlayerDelete` for orphan
 cleanup, `CharacterDatabase` / `LoginDatabase` / `WorldDatabase` for all
 queries.
 
+**Character settings go through the core `PlayerSettings` API — not a custom
+table.** Any per-character toggle or scalar preference (uint32 each) must use
+`player->UpdatePlayerSetting("mod-azor", index, value)` /
+`player->GetPlayerSetting("mod-azor", index).value` with `mod-azor` as the
+`source` namespace. The core handles load/save/delete, so no `PlayerScript`
+wiring or orphan cleanup is needed for settings. This depends on
+`EnablePlayerSettings` being enabled in `worldserver.conf` (off by default) —
+document that requirement in `conf/mod_azor_api.conf.dist` and warn at startup
+in `AzorApiWorldScript` if it's off. Reserve `custom_*` / `mod_azor_api_*`
+tables for structured records, 1:N lists, and audit data (e.g.
+`mod_azor_api_interactions`) — not settings.
+
 ## Coordinating with the bot
 
 Anything that crosses the contract — schema version, error code strings,
