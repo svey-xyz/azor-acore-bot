@@ -215,7 +215,7 @@ namespace
         w.EndObject();
     }
 
-    void LogCall(ChatHandler const* handler, std::string_view command)
+    void LogCall(ChatHandler* handler, std::string_view command)
     {
         if (!sConfigMgr->GetOption<bool>("AzorApi.Log.Commands", true))
             return;
