@@ -1,16 +1,17 @@
 # CLAUDE.md — AZOR monorepo
 
-Bun-workspaces monorepo for the AZOR project. Two surfaces talk to the same AzerothCore world: a Discord bot (TypeScript) and a server-side C++ module loaded by `acore-worldserver`. Shared types/helpers live in a third package so the two sides stay in lockstep.
+Bun-workspaces monorepo for the AZOR project. Three surfaces talk to the same AzerothCore world: a Discord bot (TypeScript), a Next.js API (TypeScript), and a server-side C++ module loaded by `acore-worldserver`. Shared types/helpers live in a fourth package so every side stays in lockstep.
 
 ## Layout
 
 ```
 .
 ├── apps/
-│   └── discord-bot/        @azor/bot         — discord.js v14 bot (Bun runtime)
+│   ├── discord-bot/        @azor/bot         — discord.js v14 bot (Bun runtime)
+│   └── web/                @azor/web         — Next.js API over mod-azor-api (App Router)
 │
 ├── packages/
-│   ├── shared/             @azor/shared      — shared TS types/helpers (source-only)
+│   ├── shared/             @azor/shared      — shared TS types + mod-azor-api client (source-only)
 │   └── server-module/      C++ AzerothCore module (built via AC's CMake, not Bun)
 │
 ├── docs/                   cross-cutting docs (PLAN.md, RFCs, architecture)
@@ -21,8 +22,9 @@ Bun-workspaces monorepo for the AZOR project. Two surfaces talk to the same Azer
 
 Per-package docs live next to the code:
 - `apps/discord-bot/CLAUDE.md` — bot architecture, env vars, command flow
+- `apps/web/CLAUDE.md` — Next.js API architecture, routes, env vars
 - `packages/server-module/README.md` — AC module conventions, persistence patterns
-- `packages/shared/` — see `src/index.ts`
+- `packages/shared/` — see `src/index.ts` (contract) and `src/client/` (the `mod-azor-api` client)
 
 ## Workspaces & scripts
 
@@ -33,6 +35,8 @@ bun install                                   # install everything
 
 bun run bot                                   # start the bot (dev)
 bun run bot:build                             # build the bot (prod)
+bun run web                                   # start the Next.js API (dev)
+bun run web:build                             # build the Next.js API (prod)
 bun run typecheck                             # tsc --noEmit across every workspace
 bun run build                                 # build every workspace that has a build script
 
@@ -45,8 +49,8 @@ bun --filter @azor/bot add <pkg>              # add a dep to a specific workspac
 - **TypeScript-first.** Every TS package extends `tsconfig.base.json`. Bun runs `.ts` directly; only `@azor/shared` emits `.d.ts` when built explicitly.
 - **No project references yet.** Cross-package imports work through Bun's workspace symlinks and each package's `exports` map (source-only for `@azor/shared`).
 - **Path aliases stay package-local.** The bot's `@azor/*`, `@azor.lib/*`, etc. resolve only inside `apps/discord-bot/`. Outside that package use the workspace name (`@azor/shared`).
-- **Shared first.** Anything consumed by both the bot and the server module (DB column names, command verbs, version constants) belongs in `packages/shared` — not duplicated.
-- **Env at the edge.** Only `apps/discord-bot/` reads env vars. `packages/shared` must remain pure (no `process.env`).
+- **Shared first.** Anything consumed by more than one surface (DB column names, command verbs, version constants, the `mod-azor-api` client) belongs in `packages/shared` — not duplicated. The transport-agnostic `mod-azor-api` client lives in `@azor/shared/client`; the bot and the web API each supply their own transport.
+- **Env at the edge.** Only apps (`apps/discord-bot/`, `apps/web/`) read env vars. `packages/shared` must remain pure (no `process.env`) — anything env-dependent is passed in as config.
 - **Docker context = repo root.** The bot's `Dockerfile` lives at `apps/discord-bot/Dockerfile` but the build context is the monorepo root so it can reach the hoisted `bun.lock` + every workspace manifest. CI passes `file: apps/discord-bot/Dockerfile`.
 - **C++ module is not an npm package.** `packages/server-module/` has no `package.json` and Bun workspaces ignore it. Build via AzerothCore's CMake.
 
@@ -63,4 +67,4 @@ When a change touches both the bot and the server module (e.g. a new DB column o
 ## Skills
 
 - `azerothcore-module-character-persistence` — use before writing any persistence in `packages/server-module/`.
-- `sanity:*` skills apply only if/when a future `apps/web` or `apps/studio` is added; ignore for now.
+- `sanity:*` skills apply if/when `apps/web` adopts Sanity for content, or an `apps/studio` is added; `apps/web` is API-only today.

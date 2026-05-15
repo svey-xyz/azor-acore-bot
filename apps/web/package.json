@@ -1,0 +1,30 @@
+{
+  "name": "@azor/web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Next.js API surface for the AZOR platform — a browser-facing client over mod-azor-api.",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/svey-xyz/azor-acore-bot.git",
+    "directory": "apps/web"
+  },
+  "author": "svey",
+  "license": "ISC",
+  "dependencies": {
+    "@azor/shared": "workspace:*",
+    "next": "latest",
+    "react": "latest",
+    "react-dom": "latest"
+  },
+  "devDependencies": {
+    "@types/node": "^25.7.0",
+    "@types/react": "latest",
+    "@types/react-dom": "latest"
+  }
+}

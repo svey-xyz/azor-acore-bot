@@ -16,9 +16,11 @@
   "scripts": {
     "bot": "bun --cwd apps/discord-bot run start",
     "bot:build": "bun --cwd apps/discord-bot run build",
+    "web": "bun --cwd apps/web run dev",
+    "web:build": "bun --cwd apps/web run build",
     "build": "bun --filter '*' run build",
     "typecheck": "bun --filter '*' run typecheck",
-    "clean": "rm -rf node_modules apps/*/node_modules packages/*/node_modules apps/*/dist packages/*/dist"
+    "clean": "rm -rf node_modules apps/*/node_modules packages/*/node_modules apps/*/dist packages/*/dist apps/web/.next"
   },
   "devDependencies": {
     "typescript": "^6.0.3"
