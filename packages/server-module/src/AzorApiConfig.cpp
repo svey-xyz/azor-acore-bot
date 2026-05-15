@@ -5,6 +5,8 @@
 #include "AzorApiConfig.h"
 
 #include "DatabaseEnv.h"
+#include "QueryResult.h"
+#include "Field.h"
 #include "Log.h"
 
 #include <charconv>

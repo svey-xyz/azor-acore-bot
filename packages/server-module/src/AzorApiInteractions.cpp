@@ -13,6 +13,8 @@
 #include "AzorApiSql.h"
 
 #include "DatabaseEnv.h"
+#include "QueryResult.h"
+#include "Field.h"
 
 namespace
 {

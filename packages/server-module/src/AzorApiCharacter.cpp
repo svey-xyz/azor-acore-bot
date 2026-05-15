@@ -6,6 +6,8 @@
 
 #include "CharacterCache.h"
 #include "DatabaseEnv.h"
+#include "QueryResult.h"
+#include "Field.h"
 #include "ObjectAccessor.h"
 #include "Player.h"
 
