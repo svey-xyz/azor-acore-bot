@@ -1,10 +1,58 @@
 /*
  * mod-azor-api — interaction audit log (impl).
+ *
+ * All interpolated SQL lives in the anonymous namespace below as named
+ * `constexpr std::string_view` constants — keeps every query auditable in one
+ * grep target, and every `{}` placeholder is paired with exactly one
+ * documented argument. User-controlled strings are routed through
+ * `AzorApi::Sql::Esc` before substitution (see AzorApiSql.h for the
+ * defence-in-depth rationale).
  */
 
 #include "AzorApiInteractions.h"
+#include "AzorApiSql.h"
 
 #include "DatabaseEnv.h"
+
+namespace
+{
+    using AzorApi::Sql::Esc;
+
+    // args: guidLow, escType
+    constexpr std::string_view SQL_SEL_LAST_OCCURRED =
+        "SELECT MAX(occurred_at) FROM mod_azor_api_interactions "
+        "WHERE guid = {} AND interaction_type = '{}'";
+
+    // args: guidLow, escType, escSource, escId, escPayload, occurredAtMs
+    constexpr std::string_view SQL_INS_INTERACTION_WITH_PAYLOAD =
+        "INSERT INTO mod_azor_api_interactions "
+        "(guid, interaction_type, source_type, source_id, payload_json, occurred_at) "
+        "VALUES ({}, '{}', '{}', '{}', '{}', {})";
+
+    // args: guidLow, escType, escSource, escId, occurredAtMs
+    constexpr std::string_view SQL_INS_INTERACTION_NULL_PAYLOAD =
+        "INSERT INTO mod_azor_api_interactions "
+        "(guid, interaction_type, source_type, source_id, payload_json, occurred_at) "
+        "VALUES ({}, '{}', '{}', '{}', NULL, {})";
+
+    // args: guidLow, escType, limit
+    constexpr std::string_view SQL_SEL_HISTORY_BY_TYPE =
+        "SELECT id, interaction_type, source_type, source_id, payload_json, occurred_at "
+        "FROM mod_azor_api_interactions "
+        "WHERE guid = {} AND interaction_type = '{}' "
+        "ORDER BY occurred_at DESC LIMIT {}";
+
+    // args: guidLow, limit
+    constexpr std::string_view SQL_SEL_HISTORY =
+        "SELECT id, interaction_type, source_type, source_id, payload_json, occurred_at "
+        "FROM mod_azor_api_interactions "
+        "WHERE guid = {} "
+        "ORDER BY occurred_at DESC LIMIT {}";
+
+    // args: guidLow
+    constexpr std::string_view SQL_DEL_BY_GUID =
+        "DELETE FROM mod_azor_api_interactions WHERE guid = {}";
+}
 
 namespace AzorApi::Interactions
 {
@@ -12,13 +60,9 @@ namespace AzorApi::Interactions
     {
         // interactionType is module-validated against a known enum before
         // reaching this layer — escaping is defence in depth.
-        std::string const escType = CharacterDatabase.EscapeString(std::string(interactionType));
+        std::string const escType = Esc(CharacterDatabase, interactionType);
 
-        QueryResult r = CharacterDatabase.Query(
-            "SELECT MAX(occurred_at) FROM mod_azor_api_interactions "
-            "WHERE guid = {} AND interaction_type = '{}'",
-            guidLow, escType);
-
+        QueryResult r = CharacterDatabase.Query(SQL_SEL_LAST_OCCURRED, guidLow, escType);
         if (!r)
             return 0;
 
@@ -38,25 +82,19 @@ namespace AzorApi::Interactions
                       std::optional<std::string_view> payloadJson,
                       uint64_t                        occurredAtMs)
     {
-        std::string const escType   = CharacterDatabase.EscapeString(std::string(interactionType));
-        std::string const escSource = CharacterDatabase.EscapeString(std::string(sourceType));
-        std::string const escId     = CharacterDatabase.EscapeString(std::string(sourceId));
+        std::string const escType   = Esc(CharacterDatabase, interactionType);
+        std::string const escSource = Esc(CharacterDatabase, sourceType);
+        std::string const escId     = Esc(CharacterDatabase, sourceId);
 
         if (payloadJson && !payloadJson->empty())
         {
-            std::string const escPayload = CharacterDatabase.EscapeString(std::string(*payloadJson));
-            trans->Append(
-                "INSERT INTO mod_azor_api_interactions "
-                "(guid, interaction_type, source_type, source_id, payload_json, occurred_at) "
-                "VALUES ({}, '{}', '{}', '{}', '{}', {})",
+            std::string const escPayload = Esc(CharacterDatabase, *payloadJson);
+            trans->Append(SQL_INS_INTERACTION_WITH_PAYLOAD,
                 guidLow, escType, escSource, escId, escPayload, occurredAtMs);
         }
         else
         {
-            trans->Append(
-                "INSERT INTO mod_azor_api_interactions "
-                "(guid, interaction_type, source_type, source_id, payload_json, occurred_at) "
-                "VALUES ({}, '{}', '{}', '{}', NULL, {})",
+            trans->Append(SQL_INS_INTERACTION_NULL_PAYLOAD,
                 guidLow, escType, escSource, escId, occurredAtMs);
         }
     }
@@ -72,22 +110,12 @@ namespace AzorApi::Interactions
         QueryResult r;
         if (typeFilter && !typeFilter->empty())
         {
-            std::string const escType = CharacterDatabase.EscapeString(std::string(*typeFilter));
-            r = CharacterDatabase.Query(
-                "SELECT id, interaction_type, source_type, source_id, payload_json, occurred_at "
-                "FROM mod_azor_api_interactions "
-                "WHERE guid = {} AND interaction_type = '{}' "
-                "ORDER BY occurred_at DESC LIMIT {}",
-                guidLow, escType, limit);
+            std::string const escType = Esc(CharacterDatabase, *typeFilter);
+            r = CharacterDatabase.Query(SQL_SEL_HISTORY_BY_TYPE, guidLow, escType, limit);
         }
         else
         {
-            r = CharacterDatabase.Query(
-                "SELECT id, interaction_type, source_type, source_id, payload_json, occurred_at "
-                "FROM mod_azor_api_interactions "
-                "WHERE guid = {} "
-                "ORDER BY occurred_at DESC LIMIT {}",
-                guidLow, limit);
+            r = CharacterDatabase.Query(SQL_SEL_HISTORY, guidLow, limit);
         }
 
         if (!r)
@@ -113,6 +141,6 @@ namespace AzorApi::Interactions
 
     void AppendDeleteForGuid(CharacterDatabaseTransaction trans, uint32 guidLow)
     {
-        trans->Append("DELETE FROM mod_azor_api_interactions WHERE guid = {}", guidLow);
+        trans->Append(SQL_DEL_BY_GUID, guidLow);
     }
 }

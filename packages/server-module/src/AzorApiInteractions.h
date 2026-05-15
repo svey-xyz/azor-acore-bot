@@ -14,11 +14,21 @@
  * writer is `OnPlayerDelete`, which also runs on the worldserver thread. There
  * is no separate worker bashing the table.
  *
- * String args (`sourceId`, `payloadJson`) are user-controlled (Discord user
- * id, free-form JSON). The `.cpp` always pipes them through
- * `CharacterDatabase.EscapeString` before fmt-substituting into the query — we
- * do NOT register prepared statements (would require patching core enums in
- * `CharacterDatabaseStatements.h`, which a module must not do).
+ * Trust boundary: callers (the command-script layer today, any future
+ * front-end tomorrow) MUST validate the length, charset, and shape of
+ * user-controlled strings (`sourceId`, `payloadJson`) before passing them
+ * here. This persistence layer treats them as already-validated and pipes
+ * them through `AzorApi::Sql::Esc` (see AzorApiSql.h) as defence in depth,
+ * not as the primary guard. Every interpolated query lives as a named
+ * `constexpr std::string_view` at the top of the `.cpp` so the trust surface
+ * is auditable in one grep.
+ *
+ * Prepared statements are intentionally NOT used here: AzerothCore's pool
+ * sizes each connection's compiled-statement vector to the core
+ * `MAX_CHARACTERDATABASE_STATEMENTS` enum, so module-added indices either
+ * collide with a future core addition or silently drop off the end of the
+ * vector. The `Execute`/`Query` + `Esc` path is what every shipping AC
+ * module does and what the wiki recommends.
  */
 
 #ifndef MOD_AZOR_API_AZORAPIINTERACTIONS_H

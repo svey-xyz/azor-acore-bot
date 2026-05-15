@@ -14,9 +14,15 @@
  * on the world tick). There is no parallel writer to these tables, so the
  * gap between SELECTs and INSERTs in `Confirm` is safe.
  *
- * Strings (`code`, `externalId`) are user-controlled. The `.cpp` always pipes
- * them through `LoginDatabase.EscapeString` before fmt-substituting into the
- * query — same defence-in-depth pattern as `AzorApiInteractions.cpp`.
+ * Trust boundary: callers (the command-script layer today, any future
+ * front-end tomorrow) MUST validate the length, charset, and shape of
+ * user-controlled strings (`code`, `externalId`) before passing them here.
+ * This persistence layer treats them as already-validated and pipes them
+ * through `AzorApi::Sql::Esc` (see AzorApiSql.h) as defence in depth, not as
+ * the primary guard. Every interpolated query lives as a named
+ * `constexpr std::string_view` at the top of the `.cpp` so the trust surface
+ * is auditable in one grep. See `AzorApiInteractions.h` for the matching
+ * rationale on why prepared statements are not used.
  */
 
 #ifndef MOD_AZOR_API_AZORAPIACCOUNTLINKS_H
